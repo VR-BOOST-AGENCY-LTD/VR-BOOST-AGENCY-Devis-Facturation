@@ -1,0 +1,9 @@
+node_modules
+.next
+.pgdata
+.env
+.env.*
+private
+references
+test-output
+.git

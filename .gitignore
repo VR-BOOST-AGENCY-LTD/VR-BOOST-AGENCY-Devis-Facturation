@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env.production
+.pgdata
+/private/*
+!/private/README.md
+src/generated
+coverage
+*.log
+test-output
+references
+tsconfig.tsbuildinfo
+exemples-pdf

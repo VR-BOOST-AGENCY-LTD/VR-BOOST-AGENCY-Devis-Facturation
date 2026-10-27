@@ -1,0 +1,388 @@
+// VR BOOST AGENCY — Devis & Factures
+// Montants : Decimal(14,2) en MAD. Les calculs sont faits en centimes entiers (src/lib/calc.ts).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  CEO
+  SALES
+}
+
+enum ClientType {
+  COMPANY
+  INDIVIDUAL
+}
+
+enum QuoteStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  ACCEPTED
+  REFUSED
+  SUPERSEDED
+  CANCELLED
+}
+
+enum InvoiceType {
+  STANDARD // facture définitive (manuelle ou issue d'un devis sans acompte)
+  DEPOSIT // facture d'acompte
+  BALANCE // facture de solde (déduit les acomptes)
+  CREDIT_NOTE // avoir
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING_APPROVAL
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  CANCELLED // annulée par avoir total
+}
+
+enum Series {
+  QUOTE
+  INVOICE
+}
+
+enum PaymentMethod {
+  VIREMENT
+  CHEQUE
+  ESPECES
+  EFFET
+  CARTE
+  AUTRE
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  role         Role
+  passwordHash String
+  active       Boolean   @default(true)
+  failedLogins Int       @default(0)
+  lockedUntil  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sessions         Session[]
+  quotesCreated    Quote[]     @relation("QuoteCreatedBy")
+  quotesApproved   Quote[]     @relation("QuoteApprovedBy")
+  invoicesCreated  Invoice[]   @relation("InvoiceCreatedBy")
+  invoicesApproved Invoice[]   @relation("InvoiceApprovedBy")
+  payments         Payment[]   @relation("PaymentRecordedBy")
+  auditLogs        AuditLog[]
+  clients          Client[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Client {
+  id               String     @id @default(cuid())
+  type             ClientType @default(COMPANY)
+  name             String
+  ice              String?
+  ifNumber         String?
+  rc               String?
+  address          String?
+  city             String?
+  country          String     @default("Maroc")
+  email            String?
+  phone            String?
+  contactName      String?
+  notes            String?
+  hubspotCompanyId String?    @unique
+  hubspotContactId String?
+  archived         Boolean    @default(false)
+  createdById      String?
+  createdBy        User?      @relation(fields: [createdById], references: [id])
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  quotes   Quote[]
+  invoices Invoice[]
+
+  @@index([name])
+}
+
+model CatalogItem {
+  id          String   @id @default(cuid())
+  designation String
+  description String?
+  unit        String   @default("forfait")
+  unitPrice   Decimal? @db.Decimal(14, 2)
+  vatRate     Decimal  @default(20) @db.Decimal(5, 2)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Quote {
+  id                String      @id @default(cuid())
+  // Numéro attribué à l'approbation CEO ; conservé par toutes les versions suivantes
+  number            Int?
+  year              Int?
+  reference         String?
+  version           Int         @default(1)
+  rootId            String? // id de la V1 (null pour la V1 elle-même)
+  previousVersionId String?     @unique
+  previousVersion   Quote?      @relation("QuoteVersions", fields: [previousVersionId], references: [id])
+  nextVersion       Quote?      @relation("QuoteVersions")
+  status            QuoteStatus @default(DRAFT)
+
+  clientId       String
+  client         Client  @relation(fields: [clientId], references: [id])
+  clientSnapshot Json?
+  hubspotDealId  String?
+
+  title              String
+  subtitle           String?
+  projectName        String?
+  issueDate          DateTime?
+  validityDays       Int       @default(30)
+  validUntil         DateTime?
+  depositPercent     Decimal   @default(50) @db.Decimal(5, 2)
+  paymentTerms       String
+  deliverables       String?
+  deadlines          String?
+  specificConditions String?
+  notes              String?
+  currency           String    @default("MAD")
+
+  totalHt      Decimal @default(0) @db.Decimal(14, 2)
+  totalVat     Decimal @default(0) @db.Decimal(14, 2)
+  totalTtc     Decimal @default(0) @db.Decimal(14, 2)
+  vatBreakdown Json?
+
+  createdById      String
+  createdBy        User      @relation("QuoteCreatedBy", fields: [createdById], references: [id])
+  submittedAt      DateTime?
+  approvedAt       DateTime?
+  approvedById     String?
+  approvedBy       User?     @relation("QuoteApprovedBy", fields: [approvedById], references: [id])
+  signed           Boolean   @default(false)
+  rejectionComment String?
+  sentAt           DateTime?
+  acceptedAt       DateTime?
+  refusedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  lines    QuoteLine[]
+  invoices Invoice[]
+
+  @@unique([number, year, version])
+  @@index([status])
+  @@index([clientId])
+}
+
+model QuoteLine {
+  id              String  @id @default(cuid())
+  quoteId         String
+  quote           Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  position        Int
+  designation     String
+  description     String?
+  quantity        Decimal @db.Decimal(12, 3)
+  unit            String  @default("forfait")
+  unitPrice       Decimal @db.Decimal(14, 2)
+  vatRate         Decimal @db.Decimal(5, 2)
+  discountPercent Decimal @default(0) @db.Decimal(5, 2)
+  totalHt         Decimal @db.Decimal(14, 2)
+
+  @@index([quoteId])
+}
+
+model Invoice {
+  id        String        @id @default(cuid())
+  type      InvoiceType   @default(STANDARD)
+  // Numéro définitif attribué uniquement à l'émission (après approbation CEO)
+  number    Int?
+  year      Int?
+  reference String?       @unique
+  status    InvoiceStatus @default(DRAFT)
+
+  clientId       String
+  client         Client  @relation(fields: [clientId], references: [id])
+  clientSnapshot Json?
+  hubspotDealId  String?
+
+  quoteId String?
+  quote   Quote?  @relation(fields: [quoteId], references: [id])
+
+  // Avoir : facture créditée. Facture rectificative : facture corrigée.
+  relatedInvoiceId String?
+  relatedInvoice   Invoice?  @relation("InvoiceRelated", fields: [relatedInvoiceId], references: [id])
+  relatedFrom      Invoice[] @relation("InvoiceRelated")
+  isRectification  Boolean   @default(false)
+
+  title          String
+  subtitle       String?
+  projectName    String?
+  depositPercent Decimal?  @db.Decimal(5, 2)
+  issueDate      DateTime?
+  dueDate        DateTime?
+  deliveryDate   DateTime?
+  paymentTerms   String?
+  notes          String?
+  reason         String? // motif (avoir / rectification)
+  currency       String    @default("MAD")
+
+  totalHt      Decimal @default(0) @db.Decimal(14, 2)
+  totalVat     Decimal @default(0) @db.Decimal(14, 2)
+  totalTtc     Decimal @default(0) @db.Decimal(14, 2)
+  vatBreakdown Json?
+  // Facture de solde : acomptes déjà facturés déduits [{invoiceId, reference, ht, vat, ttc}]
+  deductions   Json?
+  deductedTtc  Decimal @default(0) @db.Decimal(14, 2)
+  netToPay     Decimal @default(0) @db.Decimal(14, 2)
+  amountPaid   Decimal @default(0) @db.Decimal(14, 2)
+  amountCredited Decimal @default(0) @db.Decimal(14, 2)
+
+  createdById      String
+  createdBy        User      @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  submittedAt      DateTime?
+  approvedAt       DateTime?
+  approvedById     String?
+  approvedBy       User?     @relation("InvoiceApprovedBy", fields: [approvedById], references: [id])
+  signed           Boolean   @default(false)
+  rejectionComment String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  lines    InvoiceLine[]
+  payments Payment[]
+
+  @@unique([number, year])
+  @@index([status])
+  @@index([clientId])
+  @@index([quoteId])
+}
+
+model InvoiceLine {
+  id              String  @id @default(cuid())
+  invoiceId       String
+  invoice         Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  position        Int
+  designation     String
+  description     String?
+  quantity        Decimal @db.Decimal(12, 3)
+  unit            String  @default("forfait")
+  unitPrice       Decimal @db.Decimal(14, 2)
+  vatRate         Decimal @db.Decimal(5, 2)
+  discountPercent Decimal @default(0) @db.Decimal(5, 2)
+  totalHt         Decimal @db.Decimal(14, 2)
+
+  @@index([invoiceId])
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  invoiceId    String
+  invoice      Invoice       @relation(fields: [invoiceId], references: [id])
+  amount       Decimal       @db.Decimal(14, 2)
+  date         DateTime
+  method       PaymentMethod
+  reference    String?
+  notes        String?
+  recordedById String
+  recordedBy   User          @relation("PaymentRecordedBy", fields: [recordedById], references: [id])
+  cancelledAt  DateTime?
+  cancelReason String?
+  createdAt    DateTime      @default(now())
+
+  @@index([invoiceId])
+}
+
+model Sequence {
+  id            String    @id @default(cuid())
+  series        Series
+  year          Int
+  lastNumber    Int
+  confirmedAt   DateTime?
+  confirmedById String?
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([series, year])
+}
+
+model CompanySettings {
+  id                    Int       @id @default(1)
+  companyName           String    @default("VR BOOST AGENCY")
+  legalForm             String    @default("SARL")
+  capital               String    @default("1 000 000.00")
+  address               String    @default("Technopark, Boulevard Dammam, 3e étage - Bureau 228")
+  city                  String    @default("Casablanca, Maroc")
+  ice                   String    @default("003734253000073")
+  rc                    String    @default("679529")
+  ifNumber              String    @default("66984515")
+  tp                    String    @default("34771575")
+  cnss                  String    @default("7110794")
+  phone                 String    @default("+212 (0) 668 62 6028")
+  email                 String    @default("Contact@vrboostagency.com")
+  website               String    @default("www.vrboostagency.com")
+  bankName              String    @default("CIH Bank")
+  rib                   String    @default("230 780 6644788221031400 85")
+  accountHolder         String    @default("VR BOOST AGENCY")
+  defaultVatRate        Decimal   @default(20) @db.Decimal(5, 2)
+  defaultDepositPercent Decimal   @default(50) @db.Decimal(5, 2)
+  defaultValidityDays   Int       @default(30)
+  defaultPaymentTerms   String    @default("Acompte de 50 % à la validation de la commande. Solde de 50 % à la livraison.")
+  invoicePaymentTerms   String    @default("Paiement à réception de la facture.")
+  invoiceDueDays        Int       @default(0)
+  salesCanEditTerms     Boolean   @default(false)
+  numberPadding         Int       @default(5)
+  accountantValidatedAt DateTime?
+  accountantName        String?
+  updatedAt             DateTime  @updatedAt
+}
+
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  at         DateTime @default(now())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  summary    String
+  data       Json?
+  ip         String?
+
+  @@index([entityType, entityId])
+  @@index([at])
+}
+
+model DocumentFile {
+  id          String   @id @default(cuid())
+  entityType  String // QUOTE | INVOICE
+  entityId    String
+  reference   String
+  filename    String
+  mime        String   @default("application/pdf")
+  data        Bytes
+  sha256      String
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+}

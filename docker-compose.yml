@@ -1,0 +1,31 @@
+# Environnement de recette (staging) : PostgreSQL + application.
+# Les secrets (cachet, signature, police) sont montés en lecture seule depuis l'hôte, jamais intégrés à l'image.
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vrboost
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD}
+      POSTGRES_DB: vrboost
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vrboost"]
+      interval: 5s
+      retries: 10
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on: { db: { condition: service_healthy } }
+    environment:
+      DATABASE_URL: postgresql://vrboost:${POSTGRES_PASSWORD}@db:5432/vrboost
+      APP_ENV: ${APP_ENV:-staging}
+      APP_URL: ${APP_URL:-http://localhost:3100}
+      PDF_FONT: ${PDF_FONT:-helvetica}
+      HUBSPOT_ACCESS_TOKEN: ${HUBSPOT_ACCESS_TOKEN:-}
+      HUBSPOT_DEAL_STATUS_PROPERTY: ${HUBSPOT_DEAL_STATUS_PROPERTY:-}
+    volumes:
+      - ./private:/secrets/vrboost:ro
+    ports: ["127.0.0.1:3100:3100"] # exposer via un reverse proxy HTTPS uniquement
+volumes:
+  pgdata:
