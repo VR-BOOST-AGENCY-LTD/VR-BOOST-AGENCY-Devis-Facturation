@@ -7,6 +7,7 @@ import { cents } from "@/server/common";
 import { isOverdue } from "@/server/invoices";
 import { Badge, Empty, Money, PageHeader } from "@/components/ui";
 import { INVOICE_STATUS, INVOICE_TYPE } from "@/components/status";
+import { RowActions, RowLink } from "@/components/RowLink";
 
 export const metadata = { title: "Factures" };
 
@@ -37,14 +38,14 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         <form className="ml-auto"><input name="q" defaultValue={q} placeholder="Rechercher…" className="input w-56" /></form>
       </div>
       <div className="card overflow-x-auto">
-        <table className="w-full min-w-[860px]">
+        <table className="w-full min-w-[1000px]">
           <thead className="border-b border-line bg-mist/50"><tr>
             <th className="th">Référence</th><th className="th">Type</th><th className="th">Client</th><th className="th">Émise</th>
-            <th className="th">Échéance</th><th className="th text-right">Net à payer</th><th className="th text-right">Reste dû</th><th className="th">Statut</th>
+            <th className="th">Échéance</th><th className="th text-right">Net à payer</th><th className="th text-right">Reste dû</th><th className="th">Statut</th><th className="th text-right">Actions</th>
           </tr></thead>
           <tbody className="divide-y divide-line">
             {list.map((i) => (
-              <tr key={i.id} className="hover:bg-mist/40">
+              <RowLink key={i.id} href={`/factures/${i.id}`}>
                 <td className="td font-medium"><Link href={`/factures/${i.id}`} className="hover:underline">{i.reference ?? "Brouillon"}</Link></td>
                 <td className="td text-muted">{INVOICE_TYPE[i.type]}</td>
                 <td className="td">{i.client.name}</td>
@@ -53,7 +54,8 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                 <td className="td text-right"><Money cents={cents(i.netToPay) * (i.type === "CREDIT_NOTE" ? -1 : 1)} /></td>
                 <td className="td text-right">{i.number && i.type !== "CREDIT_NOTE" ? <Money cents={remainingDue(cents(i.netToPay), cents(i.amountPaid), cents(i.amountCredited))} /> : "—"}</td>
                 <td className="td"><Badge kind="invoice" status={isOverdue(i) ? "OVERDUE" : i.status} /></td>
-              </tr>
+                <td className="td"><RowActions href={`/factures/${i.id}`} pdf={`/api/pdf/invoice/${i.id}`} /></td>
+              </RowLink>
             ))}
           </tbody>
         </table>

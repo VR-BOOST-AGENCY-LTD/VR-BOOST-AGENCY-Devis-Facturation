@@ -6,6 +6,7 @@ import { cents } from "@/server/common";
 import { isQuoteExpired } from "@/server/quotes";
 import { Badge, Empty, Money, PageHeader } from "@/components/ui";
 import { QUOTE_STATUS } from "@/components/status";
+import { RowActions, RowLink } from "@/components/RowLink";
 
 export const metadata = { title: "Devis" };
 
@@ -36,21 +37,22 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
         <form className="ml-auto"><input name="q" defaultValue={q} placeholder="Rechercher…" className="input w-56" /></form>
       </div>
       <div className="card overflow-x-auto">
-        <table className="w-full min-w-[760px]">
+        <table className="w-full min-w-[900px]">
           <thead className="border-b border-line bg-mist/50"><tr>
             <th className="th">Référence</th><th className="th">Client</th><th className="th">Intitulé</th>
-            <th className="th">Date</th><th className="th text-right">Total TTC</th><th className="th">Statut</th>
+            <th className="th">Date</th><th className="th text-right">Total TTC</th><th className="th">Statut</th><th className="th text-right">Actions</th>
           </tr></thead>
           <tbody className="divide-y divide-line">
             {rows.map((x) => (
-              <tr key={x.id} className="hover:bg-mist/40">
+              <RowLink key={x.id} href={`/devis/${x.id}`}>
                 <td className="td font-medium"><Link href={`/devis/${x.id}`} className="hover:underline">{quoteReference(x.reference, x.version)}</Link></td>
                 <td className="td">{x.client.name}</td>
                 <td className="td max-w-xs truncate text-muted">{x.title}</td>
                 <td className="td text-muted">{formatDateShort(x.issueDate ?? x.createdAt)}</td>
                 <td className="td text-right"><Money cents={cents(x.totalTtc)} /></td>
                 <td className="td"><Badge kind="quote" status={isQuoteExpired(x) ? "EXPIRED" : x.status} /></td>
-              </tr>
+                <td className="td"><RowActions href={`/devis/${x.id}`} pdf={`/api/pdf/quote/${x.id}`} /></td>
+              </RowLink>
             ))}
           </tbody>
         </table>

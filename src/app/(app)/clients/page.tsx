@@ -5,6 +5,7 @@ import { hubspotEnabled } from "@/server/hubspot";
 import { HubspotSearch } from "@/components/HubspotSearch";
 import { Empty, PageHeader } from "@/components/ui";
 import { hubspotImportAction, hubspotSearchAction } from "@/app/actions";
+import { RowLink } from "@/components/RowLink";
 
 export const metadata = { title: "Clients" };
 
@@ -29,14 +30,14 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
           <thead className="bg-mist/50"><tr><th className="th">Client</th><th className="th">ICE</th><th className="th">Ville</th><th className="th">HubSpot</th><th className="th text-right">Devis</th><th className="th text-right">Factures</th></tr></thead>
           <tbody className="divide-y divide-line">
             {clients.map((c) => (
-              <tr key={c.id} className="hover:bg-mist/40">
+              <RowLink key={c.id} href={`/clients/${c.id}`}>
                 <td className="td font-medium"><Link className="hover:underline" href={`/clients/${c.id}`}>{c.name}</Link></td>
                 <td className="td text-muted">{c.ice ?? "—"}</td>
                 <td className="td text-muted">{c.city ?? "—"}</td>
                 <td className="td">{c.hubspotCompanyId ? <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs text-orange-800">Lié</span> : <span className="text-xs text-muted">—</span>}</td>
                 <td className="td text-right">{c._count.quotes}</td>
                 <td className="td text-right">{c._count.invoices}</td>
-              </tr>
+              </RowLink>
             ))}
           </tbody>
         </table>
