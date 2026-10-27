@@ -3,11 +3,12 @@
 Serveur : `184.174.35.16` — Ubuntu 24.04, Docker 29, **Dokploy v0.27** (Traefik gère HTTPS sur 80/443).
 L'application est ajoutée comme les autres projets Dokploy, sans toucher à l'existant.
 
-Domaine prévu : **`factures.vrboostagency.com`** (à adapter).
+Domaine prévu : **`facturation.vrboostagency.com`** .
 
-## 1. DNS (chez le gestionnaire de vrboostagency.com)
+## 1. DNS (Namecheap — serveurs dns1/dns2.registrar-servers.com)
 
-Créer un enregistrement **A** : `factures` → `184.174.35.16` (TTL 300).
+Namecheap › Domain List › vrboostagency.com › **Manage** › **Advanced DNS** › *Add New Record* :
+**A Record** · Host `facturation` · Value `184.174.35.16` · TTL Automatic.
 
 ## 2. Fichiers privés sur le serveur (depuis le Mac)
 
@@ -49,7 +50,7 @@ Ouvrir Dokploy (`http://184.174.35.16:3000` ou votre domaine Dokploy).
 ```
 DATABASE_URL=<Internal Connection URL de facturation-db>
 APP_ENV=production
-APP_URL=https://factures.vrboostagency.com
+APP_URL=https://facturation.vrboostagency.com
 SESSION_TTL_HOURS=12
 PRIVATE_ASSETS_DIR=/secrets/vrboost
 PDF_FONT=lufga
@@ -64,7 +65,7 @@ MAIL_FROM=VR BOOST AGENCY <meryem.lasseri@vrboostagency.com>
 
 5. **Advanced → Volumes / Mounts** → **Bind Mount** :
    Host path `/opt/vrboost-facturation/private` → Mount path `/secrets/vrboost`.
-6. **Domains** → Add : host `factures.vrboostagency.com`, **Container Port `3100`**, HTTPS activé,
+6. **Domains** → Add : host `facturation.vrboostagency.com`, **Container Port `3100`**, HTTPS activé,
    certificat **Let's Encrypt**.
 7. **Deploy**. Les migrations de base sont appliquées automatiquement au démarrage.
 
