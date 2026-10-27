@@ -149,7 +149,7 @@ export async function approveQuote(actor: Actor, id: string, opts: { applySignat
       number = await allocateNumber(tx, "QUOTE", year);
     }
     const s = await getSettings(tx);
-    const reference = formatReference(number, year!, s.numberPadding);
+    const reference = formatReference(number, year!, s.numberPadding, s.quoteNumberFormat);
 
     const updated = await tx.quote.update({
       where: { id },

@@ -32,6 +32,9 @@ const settingsSchema = z.object({
   invoicePaymentTerms: z.string().trim().min(1).max(2000),
   invoiceDueDays: z.coerce.number().int().min(0).max(365),
   salesCanEditTerms: z.boolean(),
+  quoteNumberFormat: z.string().trim().max(40).refine((v) => v.includes("{n}") && /\{yy(yy)?\}/.test(v), "Le modèle doit contenir {n} et {yy} ou {yyyy}"),
+  invoiceNumberFormat: z.string().trim().max(40).refine((v) => v.includes("{n}") && /\{yy(yy)?\}/.test(v), "Le modèle doit contenir {n} et {yy} ou {yyyy}"),
+  creditNoteNumberFormat: z.string().trim().max(40).refine((v) => v.includes("{n}") && /\{yy(yy)?\}/.test(v), "Le modèle doit contenir {n} et {yy} ou {yyyy}"),
 });
 
 export async function updateSettings(actor: Actor, input: unknown) {

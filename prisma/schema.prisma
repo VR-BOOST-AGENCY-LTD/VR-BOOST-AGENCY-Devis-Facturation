@@ -351,6 +351,9 @@ model CompanySettings {
   invoiceDueDays        Int       @default(0)
   salesCanEditTerms     Boolean   @default(false)
   numberPadding         Int       @default(5)
+  quoteNumberFormat     String    @default("{n}/{yyyy}")
+  invoiceNumberFormat   String    @default("FAC-{n}/{yy}")
+  creditNoteNumberFormat String   @default("AV-{n}/{yy}")
   accountantValidatedAt DateTime?
   accountantName        String?
   updatedAt             DateTime  @updatedAt

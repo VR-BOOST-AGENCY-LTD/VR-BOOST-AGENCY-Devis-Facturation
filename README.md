@@ -75,7 +75,9 @@ passe la facture d'origine à « Annulée (avoir) ». Les avoirs utilisent la s�
 
 ## Numérotation
 
-- Deux séries indépendantes et annuelles : **DEVIS** et **FACTURES** (avoirs inclus), format `00455/2026`.
+- Deux séries indépendantes et annuelles : **DEVIS** et **FACTURES** (avoirs inclus).
+- Formats configurables (Paramètres) : devis `00455/2026`, factures `FAC-00455/26`, avoirs `AV-00456/26`
+  (`{n}` numéro, `{yyyy}` / `{yy}` année).
 - Préconfigurées sur le dernier numéro communiqué, **00454/2026** → prochains numéros **00455/2026** dans chaque série.
 - **Aucune émission possible tant que le CEO n'a pas confirmé** les derniers numéros réellement émis
   (Paramètres › Numérotation). On ne peut jamais redescendre sous un numéro déjà attribué.
@@ -100,7 +102,8 @@ passe la facture d'origine à « Annulée (avoir) ». Les avoirs utilisent la s�
 
 ## HubSpot
 
-Private App HubSpot, jeton **côté serveur uniquement** (`HUBSPOT_ACCESS_TOKEN`). Scopes :
+Jeton **côté serveur uniquement** (`HUBSPOT_ACCESS_TOKEN`) : clé de service / application privée (`pat-…`, utilisée
+telle quelle) ou clé d'accès personnelle (échangée automatiquement contre un jeton temporaire). Scopes :
 `crm.objects.companies.read`, `crm.objects.companies.write`, `crm.objects.contacts.read`, `crm.objects.deals.read`,
 `crm.objects.deals.write` (si propriété de statut), `files`.
 
@@ -111,12 +114,27 @@ Private App HubSpot, jeton **côté serveur uniquement** (`HUBSPOT_ACCESS_TOKEN`
   La seule écriture sur un objet existant est la propriété personnalisée optionnelle `HUBSPOT_DEAL_STATUS_PROPERTY`.
 - Une panne HubSpot ne bloque jamais le workflow ; elle est journalisée (`hubspot.error`).
 
+## Envoi par e-mail
+
+Bouton « Envoyer par e-mail » sur un devis approuvé et sur une facture émise : destinataire prérempli (e-mail de la
+fiche client), objet et message modifiables, **PDF officiel archivé joint**. Un devis approuvé passe à « Envoyé ».
+Chaque envoi est journalisé (destinataires, empreinte du PDF). Configuration SMTP dans `.env` (`SMTP_*`, `MAIL_FROM`) ;
+Google Workspace : `smtp.gmail.com:465` avec un mot de passe d'application **du compte indiqué dans `SMTP_USER`**.
+
+## Mise en service (remise à zéro des données de test)
+
+```bash
+npm run db:prepare-production -- --last-quote 454 --last-invoice 454 --confirm REINITIALISER
+```
+
+Sauvegarde complète (`backups/`), suppression des devis, factures, paiements, archives et journal de test ;
+conservation des comptes, paramètres, clients et catalogue ; séquences remises au dernier numéro réellement émis,
+à confirmer ensuite par le CEO dans Paramètres › Numérotation.
+
 ## Police Lufga — licence
 
-Les fichiers fournis indiquent : *« Copyright © 2020 Adam Ladd. This font is only available by purchase »*, et
-proviennent d'un site de téléchargement tiers (dfonts.org) — ce qui **ne constitue pas une licence**. Par défaut,
-les PDF utilisent Helvetica (police du devis de référence). Après achat d'une licence couvrant l'incorporation PDF
-(ladd-design.com), placer les `.otf` dans `private/fonts/` et définir `PDF_FONT=lufga`.
+Licence achetée par VR BOOST AGENCY (confirmé le 27/10/2026) : `PDF_FONT=lufga`. Les `.otf` restent dans
+`private/fonts/` (jamais publics). Sans cette variable, les PDF utilisent Helvetica.
 
 ## Déploiement
 

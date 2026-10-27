@@ -22,7 +22,7 @@ function mockHubspot(routes: Record<string, (body: unknown) => unknown>) {
 }
 
 beforeEach(async () => {
-  process.env.HUBSPOT_ACCESS_TOKEN = "test-token";
+  process.env.HUBSPOT_ACCESS_TOKEN = "pat-test-token";
   await db.$executeRawUnsafe(`TRUNCATE "AuditLog", "DocumentFile", "Payment", "InvoiceLine", "Invoice", "QuoteLine", "Quote", "Client", "User" RESTART IDENTITY CASCADE`);
   const u = await db.user.create({ data: { email: "ceo@hs", name: "CEO", role: "CEO", passwordHash: "x" } });
   actor = { id: u.id, role: "CEO" };

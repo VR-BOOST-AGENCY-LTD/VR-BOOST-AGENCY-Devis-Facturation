@@ -15,7 +15,9 @@ import { PdfPreview } from "@/components/PdfPreview";
 import { Timeline } from "@/components/Timeline";
 import { Badge, Money, Notice, PageHeader } from "@/components/ui";
 import { INVOICE_TYPE, PAYMENT_METHOD } from "@/components/status";
-import { cancelPaymentAction, hubspotSyncDocAction, invoiceOpAction, recordPaymentAction } from "@/app/actions";
+import { cancelPaymentAction, draftEmailAction, hubspotSyncDocAction, invoiceOpAction, recordPaymentAction, sendEmailAction } from "@/app/actions";
+import { SendEmailButton } from "@/components/SendEmailButton";
+import { mailEnabled } from "@/server/mailer";
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -62,6 +64,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                 <ActionButton action={op("approve")} label="Approuver et émettre" variant="brand" signatureOption
                   confirm="Le prochain numéro de la série FACTURES sera attribué définitivement. La facture deviendra non modifiable." />
               </>
+            ) : null}
+            {issued && can(user, "document.send") ? (
+              <SendEmailButton enabled={mailEnabled()} draft={draftEmailAction.bind(null, "INVOICE", inv.id)} send={sendEmailAction.bind(null, "INVOICE", inv.id)} />
             ) : null}
             {inv.status === "DRAFT" && !issued ? <ActionButton action={op("delete")} label="Supprimer" variant="danger" confirm="Supprimer ce brouillon ?" goTo="/factures" /> : null}
             {issued && !isCredit && inv.status !== "CANCELLED" && can(user, "invoice.creditNote") ? (

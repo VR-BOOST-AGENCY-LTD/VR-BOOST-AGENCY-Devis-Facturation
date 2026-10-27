@@ -73,6 +73,7 @@ describe("Acomptes et soldes", () => {
 describe("Formats", () => {
   it("références et montants", () => {
     expect(formatReference(455, 2026)).toBe("00455/2026");
+    expect(formatReference(455, 2026, 5, "FAC-{n}/{yy}")).toBe("FAC-00455/26");
     expect(formatCents(3_540_000)).toBe("35 400 MAD");
     expect(formatCents(123_456, "MAD", true)).toBe("1 234,56 MAD");
     expect(toCents("1234.565")).toBe(123_457);

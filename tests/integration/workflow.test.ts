@@ -77,7 +77,7 @@ describe("Numérotation", () => {
     expect((await quotes.approveQuote(ceo, q2.id, { applySignature: false })).reference).toBe(`00456/${year}`);
     const inv = await invoices.createInvoiceFromQuote(meryem, qid, "STANDARD");
     expect(inv.number).toBeNull(); // pas de numéro au brouillon
-    expect((await issue(inv.id)).reference).toBe(`00455/${year}`);
+    expect((await issue(inv.id)).reference).toBe(`FAC-00455/${String(year).slice(-2)}`);
   });
 
   it("aucun doublon sous émissions concurrentes (20 approbations simultanées)", async () => {
@@ -255,6 +255,7 @@ describe("Acomptes, soldes, paiements, avoirs", () => {
     await invoices.submitInvoice(ceo, creditNote.id);
     const cn = await invoices.approveAndIssueInvoice(ceo, creditNote.id, { applySignature: true });
     expect(cn.number).toBe(456); // les avoirs partagent la série FACTURES
+    expect(cn.reference).toBe(`AV-00456/${String(new Date().getFullYear()).slice(-2)}`);
     expect((await db.invoice.findUniqueOrThrow({ where: { id: inv.id } })).status).toBe("CANCELLED");
     await invoices.rejectInvoice(ceo, rectification.id, "relance");
     await invoices.submitInvoice(ceo, rectification.id);

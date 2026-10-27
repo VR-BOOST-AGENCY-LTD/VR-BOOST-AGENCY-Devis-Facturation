@@ -12,7 +12,7 @@ const securityHeaders = [
 const config: NextConfig = {
   poweredByHeader: false,
   // @react-pdf et pg restent côté serveur (Node)
-  serverExternalPackages: ["@react-pdf/renderer", "pg"],
+  serverExternalPackages: ["@react-pdf/renderer", "pg", "nodemailer"],
   // Les actifs privés (cachet, signature, polices) sont lus depuis le disque à l'exécution
   outputFileTracingIncludes: { "/api/pdf/**": ["./assets/**"] },
   async headers() {

@@ -31,10 +31,10 @@ export default async function SettingsPage() {
       <div className="space-y-6">
         <section id="numerotation" className="card p-5">
           <h2 className="mb-1 text-sm font-semibold">Numérotation automatique</h2>
-          <p className="mb-4 text-sm text-muted">Deux séries indépendantes, annuelles. Dernière référence communiquée par la direction : <b>00454/2026</b>. Confirmez le dernier numéro réellement émis dans chaque série avant la mise en production ; aucune émission n&apos;est possible avant.</p>
+          <p className="mb-4 text-sm text-muted">Deux séries indépendantes, annuelles. Dernière référence communiquée par la direction : <b>00454</b> (2026). Confirmez le dernier numéro réellement émis dans chaque série avant la mise en production ; aucune émission n&apos;est possible avant.</p>
           <div className="grid gap-4 md:grid-cols-2">
-            <SequenceForm series="QUOTE" year={year} lastNumber={seq("QUOTE")?.lastNumber ?? 0} confirmed={Boolean(seq("QUOTE")?.confirmedAt)} maxIssued={maxQ._max.number ?? 0} save={setSequenceAction} />
-            <SequenceForm series="INVOICE" year={year} lastNumber={seq("INVOICE")?.lastNumber ?? 0} confirmed={Boolean(seq("INVOICE")?.confirmedAt)} maxIssued={maxI._max.number ?? 0} save={setSequenceAction} />
+            <SequenceForm series="QUOTE" year={year} lastNumber={seq("QUOTE")?.lastNumber ?? 0} confirmed={Boolean(seq("QUOTE")?.confirmedAt)} maxIssued={maxQ._max.number ?? 0} template={s.quoteNumberFormat} save={setSequenceAction} />
+            <SequenceForm series="INVOICE" year={year} lastNumber={seq("INVOICE")?.lastNumber ?? 0} confirmed={Boolean(seq("INVOICE")?.confirmedAt)} maxIssued={maxI._max.number ?? 0} template={s.invoiceNumberFormat} save={setSequenceAction} />
           </div>
         </section>
 
@@ -60,6 +60,7 @@ export default async function SettingsPage() {
             accountHolder: s.accountHolder, defaultVatRate: num(s.defaultVatRate), defaultDepositPercent: num(s.defaultDepositPercent),
             defaultValidityDays: s.defaultValidityDays, defaultPaymentTerms: s.defaultPaymentTerms, invoicePaymentTerms: s.invoicePaymentTerms,
             invoiceDueDays: s.invoiceDueDays, salesCanEditTerms: s.salesCanEditTerms,
+            quoteNumberFormat: s.quoteNumberFormat, invoiceNumberFormat: s.invoiceNumberFormat, creditNoteNumberFormat: s.creditNoteNumberFormat,
           }}
         />
       </div>

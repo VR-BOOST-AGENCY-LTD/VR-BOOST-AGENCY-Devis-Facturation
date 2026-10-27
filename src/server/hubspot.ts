@@ -16,12 +16,35 @@ const NOTE_TO_DEAL = 214;
 
 export const hubspotEnabled = () => Boolean(process.env.HUBSPOT_ACCESS_TOKEN);
 
+let exchanged: { key: string; token: string; expiresAt: number } | null = null;
+
+/**
+ * Jeton d'accès : un jeton d'application privée / clé de service (« pat-… ») s'utilise tel quel ;
+ * une clé d'accès personnelle est échangée contre un jeton OAuth temporaire, mis en cache.
+ */
+async function accessToken(): Promise<string> {
+  const key = process.env.HUBSPOT_ACCESS_TOKEN!;
+  if (key.startsWith("pat-")) return key;
+  if (exchanged && exchanged.key === key && exchanged.expiresAt > Date.now() + 60_000) return exchanged.token;
+  const res = await fetch(`${BASE}/localdevauth/v1/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ encodedOAuthRefreshToken: key }),
+    signal: AbortSignal.timeout(15_000),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new AppError(`Clé HubSpot refusée (${res.status}) : vérifiez HUBSPOT_ACCESS_TOKEN.`, "CONFLICT");
+  const d = (await res.json()) as { oauthAccessToken: string; expiresAtMillis: number };
+  exchanged = { key, token: d.oauthAccessToken, expiresAt: d.expiresAtMillis };
+  return d.oauthAccessToken;
+}
+
 async function hs<T>(path: string, init: RequestInit = {}, attempt = 0): Promise<T> {
   if (!hubspotEnabled()) throw new AppError("HubSpot non configuré (HUBSPOT_ACCESS_TOKEN).", "CONFLICT");
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${process.env.HUBSPOT_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${await accessToken()}`,
       ...(init.body && !(init.body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
       ...init.headers,
     },

@@ -46,8 +46,15 @@ export function addDays(d: Date, days: number): Date {
   return r;
 }
 
-export function formatReference(n: number, year: number, padding = 5): string {
-  return `${String(n).padStart(padding, "0")}/${year}`;
+/**
+ * Référence à partir d'un modèle : {n} = numéro complété de zéros, {yyyy} = année, {yy} = année sur 2 chiffres.
+ * Ex. « {n}/{yyyy} » → 00455/2026 ; « FAC-{n}/{yy} » → FAC-00455/26.
+ */
+export function formatReference(n: number, year: number, padding = 5, template = "{n}/{yyyy}"): string {
+  return template
+    .replaceAll("{n}", String(n).padStart(padding, "0"))
+    .replaceAll("{yyyy}", String(year))
+    .replaceAll("{yy}", String(year).slice(-2));
 }
 
 export function quoteReference(ref: string | null, version: number): string {

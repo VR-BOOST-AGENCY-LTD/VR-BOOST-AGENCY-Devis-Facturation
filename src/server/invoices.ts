@@ -348,7 +348,9 @@ export async function approveAndIssueInvoice(actor: Actor, id: string, opts: { a
     const issueDate = todayUtc();
     const year = issueDate.getUTCFullYear();
     const number = await allocateNumber(tx, "INVOICE", year);
-    const reference = formatReference(number, year, s.numberPadding);
+    const reference = formatReference(
+      number, year, s.numberPadding, inv.type === "CREDIT_NOTE" ? s.creditNoteNumberFormat : s.invoiceNumberFormat,
+    );
     const dueDate =
       inv.type === "CREDIT_NOTE"
         ? null

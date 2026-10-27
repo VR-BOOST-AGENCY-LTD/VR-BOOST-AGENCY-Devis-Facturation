@@ -15,6 +15,7 @@ import * as payments from "@/server/payments";
 import * as clients from "@/server/clients";
 import * as admin from "@/server/admin";
 import * as hubspot from "@/server/hubspot";
+import * as mailer from "@/server/mailer";
 
 export type ActionResult<T = unknown> = { ok: true; data?: T; message?: string } | { ok: false; error: string };
 
@@ -210,4 +211,18 @@ export async function saveCatalogItemAction(id: string | null, data: unknown) {
 
 export async function toggleCatalogItemAction(id: string) {
   return run((u) => admin.toggleCatalogItem(u, id));
+}
+
+// ---------------------------------------------------------------- e-mail
+
+export async function draftEmailAction(entityType: "QUOTE" | "INVOICE", id: string) {
+  return run(() => mailer.draftDocumentEmail(entityType, id));
+}
+
+export async function sendEmailAction(entityType: "QUOTE" | "INVOICE", id: string, data: mailer.DraftEmail) {
+  return run(async (u) => {
+    const r = await mailer.sendDocumentEmail(u, entityType, id, data);
+    if (entityType === "QUOTE") after(() => hubspot.syncDocumentToHubspot("QUOTE", id, u));
+    return r;
+  }, "E-mail envoyé");
 }

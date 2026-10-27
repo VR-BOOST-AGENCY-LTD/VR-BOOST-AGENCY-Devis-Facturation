@@ -28,7 +28,8 @@ export type Permission =
   | "audit.view"
   | "catalog.edit"
   | "client.edit"
-  | "hubspot.write";
+  | "hubspot.write"
+  | "document.send";
 
 const SALES: Permission[] = [
   "quote.create",
@@ -43,6 +44,7 @@ const SALES: Permission[] = [
   "client.edit",
   "catalog.edit",
   "hubspot.write",
+  "document.send",
 ];
 
 const MATRIX: Record<Role, Set<Permission>> = {

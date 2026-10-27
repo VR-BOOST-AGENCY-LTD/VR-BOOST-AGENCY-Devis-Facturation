@@ -11,7 +11,9 @@ import { PdfPreview } from "@/components/PdfPreview";
 import { Timeline } from "@/components/Timeline";
 import { Badge, Money, Notice, PageHeader } from "@/components/ui";
 import { INVOICE_TYPE } from "@/components/status";
-import { hubspotSyncDocAction, invoiceFromQuoteAction, quoteOpAction } from "@/app/actions";
+import { draftEmailAction, hubspotSyncDocAction, invoiceFromQuoteAction, quoteOpAction, sendEmailAction } from "@/app/actions";
+import { SendEmailButton } from "@/components/SendEmailButton";
+import { mailEnabled } from "@/server/mailer";
 
 export default async function QuotePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
@@ -57,6 +59,9 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
                 <ActionButton action={op("approve")} label="Approuver le devis" variant="brand" signatureOption
                   confirm={q.number ? `Nouvelle version V${q.version} du devis ${q.reference}.` : "Le prochain numéro de la série DEVIS sera attribué définitivement."} />
               </>
+            ) : null}
+            {["APPROVED", "SENT", "ACCEPTED"].includes(q.status) && can(user, "document.send") ? (
+              <SendEmailButton enabled={mailEnabled()} draft={draftEmailAction.bind(null, "QUOTE", q.id)} send={sendEmailAction.bind(null, "QUOTE", q.id)} />
             ) : null}
             {q.status === "APPROVED" ? <ActionButton action={op("sent")} label="Marquer envoyé" /> : null}
             {["APPROVED", "SENT"].includes(q.status) ? (

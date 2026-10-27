@@ -59,7 +59,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         {refus ? <Notice tone="red">Accès refusé : cette section est réservée au CEO.</Notice> : null}
         {unconfirmed.length > 0 || sequences.length < 2 ? (
           <Notice>
-            <b>Numérotation à confirmer avant toute émission.</b> Derniers numéros pré-configurés : {sequences.map((s) => `${s.series === "QUOTE" ? "DEVIS" : "FACTURES"} ${formatReference(s.lastNumber, s.year)}`).join(" · ") || "aucun"}.
+            <b>Numérotation à confirmer avant toute émission.</b> Derniers numéros pré-configurés : {sequences.map((s) => `${s.series === "QUOTE" ? "DEVIS" : "FACTURES"} ${formatReference(s.lastNumber, s.year, settings.numberPadding, s.series === "QUOTE" ? settings.quoteNumberFormat : settings.invoiceNumberFormat)}`).join(" · ") || "aucun"}.
             {can(user, "sequence.edit") ? <> <Link href="/parametres#numerotation" className="underline">Confirmer maintenant</Link></> : " Le CEO doit les confirmer."}
           </Notice>
         ) : null}

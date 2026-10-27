@@ -1,5 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { formatReference } from "@/lib/format";
 import { useState, useTransition } from "react";
 import type { ActionResult } from "@/app/actions";
 
@@ -62,18 +63,31 @@ export function SettingsForm({ initial, save }: { initial: Settings; save: (d: u
           </label>
         </div>
       </section>
+      <section className="card p-5">
+        <h2 className="mb-1 text-sm font-semibold">Format des numéros</h2>
+        <p className="mb-4 text-xs text-muted">{"{n}"} = numéro sur 5 chiffres · {"{yyyy}"} = année · {"{yy}"} = année sur 2 chiffres. S&apos;applique aux prochains documents émis.</p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {([["quoteNumberFormat", "Devis"], ["invoiceNumberFormat", "Factures"], ["creditNoteNumberFormat", "Avoirs"]] as const).map(([k, l]) => (
+            <div key={k}>
+              <label className="label" htmlFor={k}>{l}</label>
+              <input id={k} className="input font-mono" value={String(s[k] ?? "")} onChange={(e) => setS({ ...s, [k]: e.target.value })} />
+              <p className="mt-1 text-xs text-muted">Aperçu : <b>{formatReference(455, new Date().getFullYear(), 5, String(s[k] ?? ""))}</b></p>
+            </div>
+          ))}
+        </div>
+      </section>
       <div className="flex items-center gap-3"><button className="btn-primary" disabled={pending}>Enregistrer les paramètres</button><Msg /></div>
     </form>
   );
 }
 
-export function SequenceForm({ series, year, lastNumber, confirmed, maxIssued, save }: {
-  series: "QUOTE" | "INVOICE"; year: number; lastNumber: number; confirmed: boolean; maxIssued: number;
+export function SequenceForm({ series, year, lastNumber, confirmed, maxIssued, template, save }: {
+  series: "QUOTE" | "INVOICE"; year: number; lastNumber: number; confirmed: boolean; maxIssued: number; template: string;
   save: (series: "QUOTE" | "INVOICE", year: number, n: number) => Promise<ActionResult<unknown>>;
 }) {
   const [n, setN] = useState(String(lastNumber));
   const { pending, run, Msg } = useSubmit();
-  const pad = (x: number) => `${String(x).padStart(5, "0")}/${year}`;
+  const pad = (x: number) => formatReference(x, year, 5, template);
   const next = Number(n) + 1;
   return (
     <form className="rounded-xl border border-line p-4" onSubmit={(e) => { e.preventDefault(); run(() => save(series, year, Number(n))); }}>
