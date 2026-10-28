@@ -18,7 +18,9 @@
     "user:password": "tsx scripts/set-password.ts",
     "db:prepare-production": "tsx scripts/prepare-production.ts",
     "user:create": "tsx scripts/create-user.ts",
-    "reminders": "node scripts/send-reminders.mjs"
+    "reminders": "node scripts/send-reminders.mjs",
+    "demo:seed": "tsx scripts/demo-seed.ts",
+    "dev:demo": "bash -c 'set -a; . ./.env; set +a; DATABASE_URL=\"$DEMO_DATABASE_URL\" next dev -p 3200'"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",

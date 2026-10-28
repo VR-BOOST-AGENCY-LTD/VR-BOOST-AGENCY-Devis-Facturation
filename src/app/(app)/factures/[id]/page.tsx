@@ -13,6 +13,7 @@ import { ActionButton } from "@/components/ActionButton";
 import { PaymentForm } from "@/components/PaymentForm";
 import { PdfPreview } from "@/components/PdfPreview";
 import { Timeline } from "@/components/Timeline";
+import { WorkflowSteps } from "@/components/WorkflowSteps";
 import { Badge, Money, Notice, PageHeader } from "@/components/ui";
 import { INVOICE_TYPE, PAYMENT_METHOD } from "@/components/status";
 import { cancelPaymentAction, sendReminderAction, draftEmailAction, hubspotSyncDocAction, invoiceOpAction, recordPaymentAction, sendEmailAction } from "@/app/actions";
@@ -85,6 +86,15 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         }
       />
 
+      {!isCredit ? (
+        <div className="mb-4">
+          <WorkflowSteps
+            steps={["Brouillon", "Validation CEO", "Émise", "Partiellement payée", "Payée"]}
+            current={({ DRAFT: 0, PENDING_APPROVAL: 1, ISSUED: 2, PARTIALLY_PAID: 3, PAID: 5, CANCELLED: 2 } as Record<string, number>)[inv.status] ?? 0}
+            failed={inv.status === "CANCELLED" ? "Annulée par avoir" : overdue ? "Échéance dépassée" : undefined}
+          />
+        </div>
+      ) : null}
       <div className="mb-6 space-y-3">
         {inv.rejectionComment && inv.status === "DRAFT" ? <Notice tone="red"><b>Renvoyée par le CEO :</b> {inv.rejectionComment}</Notice> : null}
         {inv.status === "PENDING_APPROVAL" && isCeo && isProduction() && !settings.accountantValidatedAt ? (

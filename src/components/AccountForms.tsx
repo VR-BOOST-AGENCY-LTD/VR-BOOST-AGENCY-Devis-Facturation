@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { ActionResult } from "@/app/actions";
+import { toast } from "./Toaster";
 
 function useAction() {
   const router = useRouter();
@@ -12,6 +13,7 @@ function useAction() {
       setMsg(null);
       const r = await fn();
       setMsg(r.ok ? { ok: true, text: r.message ?? "Enregistré" } : { ok: false, text: r.error });
+      if (r.ok) toast(r.message ?? "Enregistré");
       if (r.ok) { onOk?.(); router.refresh(); }
     });
   const Msg = () =>

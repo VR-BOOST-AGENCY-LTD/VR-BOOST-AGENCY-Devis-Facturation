@@ -19,7 +19,7 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
   const [opts, s] = await Promise.all([editorOptions(), getSettings()]);
   return (
     <>
-      <PageHeader title={`Modifier — ${quoteReference(q.reference, q.version)}`} subtitle={q.status === "PENDING_APPROVAL" ? "Modifier ce devis annule la soumission en cours." : undefined} />
+      <PageHeader eyebrow="Ventes" title={`Modifier — ${quoteReference(q.reference, q.version)}`} subtitle={q.status === "PENDING_APPROVAL" ? "Modifier ce devis annule la soumission en cours." : undefined} />
       <DocEditor
         kind="quote"
         id={q.id}

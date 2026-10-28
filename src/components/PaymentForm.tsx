@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { ActionResult } from "@/app/actions";
+import { toast } from "./Toaster";
 import { PAYMENT_METHOD } from "./status";
 
 export function PaymentForm({
@@ -32,6 +33,7 @@ export function PaymentForm({
             notes: fd.get("notes"),
           });
           if (!r.ok) return setError(r.error);
+          toast("Paiement enregistré");
           router.refresh();
         })
       }

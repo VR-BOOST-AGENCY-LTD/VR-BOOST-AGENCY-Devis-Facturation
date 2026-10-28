@@ -14,6 +14,7 @@ import { INVOICE_TYPE } from "@/components/status";
 import { draftEmailAction, hubspotSyncDocAction, invoiceFromQuoteAction, quoteOpAction, sendEmailAction, uploadSignedQuoteAction } from "@/app/actions";
 import { SendEmailButton } from "@/components/SendEmailButton";
 import { SignedQuoteUpload } from "@/components/SignedQuoteUpload";
+import { WorkflowSteps } from "@/components/WorkflowSteps";
 import { mailEnabled } from "@/server/mailer";
 
 export default async function QuotePage({ params }: { params: Promise<{ id: string }> }) {
@@ -92,6 +93,16 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
         }
       />
 
+      <div className="mb-4">
+        <WorkflowSteps
+          steps={["Brouillon", "Validation CEO", "Approuvé", "Envoyé", "Accepté", "Facturé"]}
+          current={
+            activeInvoices.some((i) => i.number != null) ? 6
+            : ({ DRAFT: 0, PENDING_APPROVAL: 1, APPROVED: 2, SENT: 3, ACCEPTED: 5, REFUSED: 4, SUPERSEDED: 3, CANCELLED: 0 } as Record<string, number>)[q.status] ?? 0
+          }
+          failed={q.status === "REFUSED" ? "Refusé par le client" : q.status === "CANCELLED" ? "Annulé" : q.status === "SUPERSEDED" ? "Remplacé par une nouvelle version" : expired ? "Validité dépassée" : undefined}
+        />
+      </div>
       <div className="mb-6 space-y-3">
         {q.rejectionComment && q.status === "DRAFT" ? <Notice tone="red"><b>Renvoyé par le CEO :</b> {q.rejectionComment}</Notice> : null}
         {q.nextVersion ? <Notice tone="sky">Une version plus récente existe : <Link className="underline" href={`/devis/${q.nextVersion.id}`}>V{q.nextVersion.version}</Link>.</Notice> : null}

@@ -13,11 +13,11 @@ export default async function UsersPage() {
   const last = new Map(logins.map((l) => [l.userId, l._max.at]));
   return (
     <>
-      <PageHeader title="Utilisateurs" subtitle="Comptes ayant accès à l'application — réservé au CEO" actions={<CreateUserForm create={createUserAction} />} />
+      <PageHeader eyebrow="Administration" title="Utilisateurs" subtitle="Comptes ayant accès à l'application — réservé au CEO" actions={<CreateUserForm create={createUserAction} />} />
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[820px]">
-          <thead className="bg-mist/50"><tr><th className="th">Nom</th><th className="th">E-mail</th><th className="th">Rôle</th><th className="th">Statut</th><th className="th">Dernière connexion</th><th className="th text-right">Actions</th></tr></thead>
-          <tbody className="divide-y divide-line">
+          <thead className="border-b border-line/80"><tr><th className="th">Nom</th><th className="th">E-mail</th><th className="th">Rôle</th><th className="th">Statut</th><th className="th">Dernière connexion</th><th className="th text-right">Actions</th></tr></thead>
+          <tbody className="stagger divide-y divide-line/70">
             {users.map((u) => (
               <tr key={u.id} className={u.active ? "" : "opacity-60"}>
                 <td className="td font-medium">{u.name}{u.id === me.id ? <span className="ml-2 text-xs text-muted">(vous)</span> : null}</td>

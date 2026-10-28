@@ -19,7 +19,7 @@ export default async function ValidationPage() {
   const when = (d: Date | null) => d?.toLocaleString("fr-MA", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Casablanca" }) ?? "";
   return (
     <>
-      <PageHeader title="Validation CEO" subtitle="Approbation, numérotation définitive, cachet et signature" />
+      <PageHeader eyebrow="Pilotage" title="Validation CEO" subtitle="Approbation, numérotation définitive, cachet et signature" />
       <section className="card mb-6">
         <h2 className="border-b border-line px-5 py-4 text-sm font-semibold">Devis à approuver ({quotes.length})</h2>
         <ul className="divide-y divide-line">

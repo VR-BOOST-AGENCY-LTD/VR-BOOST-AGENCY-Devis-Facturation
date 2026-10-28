@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { ActionResult } from "@/app/actions";
+import { toast } from "./Toaster";
 
 type C = {
   type: string; name: string; ice: string; ifNumber: string; rc: string; address: string; city: string; country: string;
@@ -34,6 +35,7 @@ export function ClientForm({ id, initial, save }: { id: string | null; initial: 
           const r = await save(id, c);
           if (!r.ok) return setError(r.error);
           setOk(true);
+          toast("Fiche client enregistrée");
           if (!id) router.push(`/clients/${r.data}`);
           router.refresh();
         });

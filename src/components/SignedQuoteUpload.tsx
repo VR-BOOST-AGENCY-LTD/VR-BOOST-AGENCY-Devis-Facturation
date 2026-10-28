@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import type { ActionResult } from "@/app/actions";
+import { toast } from "./Toaster";
 
 export function SignedQuoteUpload({ upload, accepted }: { upload: (form: FormData) => Promise<ActionResult<unknown>>; accepted: boolean }) {
   const router = useRouter();
@@ -22,6 +23,7 @@ export function SignedQuoteUpload({ upload, accepted }: { upload: (form: FormDat
           const r = await upload(fd);
           if (!r.ok) return setError(r.error);
           setOk(true);
+          toast("Bon pour accord enregistré");
           ref.current?.reset();
           router.refresh();
         })

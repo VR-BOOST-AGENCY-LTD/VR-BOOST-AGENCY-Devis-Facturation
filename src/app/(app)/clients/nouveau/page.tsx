@@ -9,7 +9,7 @@ export default async function NewClientPage() {
   await requirePermission("client.edit");
   return (
     <div className="max-w-3xl">
-      <PageHeader title="Nouvelle fiche client" />
+      <PageHeader eyebrow="Ventes" title="Nouvelle fiche client" />
       <ClientForm id={null} initial={{}} save={saveClientAction} />
     </div>
   );

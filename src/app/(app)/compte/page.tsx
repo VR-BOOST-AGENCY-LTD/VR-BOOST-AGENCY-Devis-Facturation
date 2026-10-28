@@ -11,7 +11,7 @@ export default async function AccountPage() {
   const sessions = await db.session.count({ where: { userId: user.id, expiresAt: { gt: new Date() } } });
   return (
     <>
-      <PageHeader title="Mon compte" subtitle={`${user.name} · ${user.email} · ${user.role === "CEO" ? "CEO — Administrateur" : "Commerciale"}`} />
+      <PageHeader eyebrow="Compte" title="Mon compte" subtitle={`${user.name} · ${user.email} · ${user.role === "CEO" ? "CEO — Administrateur" : "Commerciale"}`} />
       <div className="space-y-6">
         <ChangePasswordForm save={changePasswordAction} />
         <p className="text-sm text-muted">Sessions actives : {sessions}. Changer le mot de passe déconnecte toutes les autres sessions.</p>

@@ -12,7 +12,7 @@ export default async function NewInvoicePage({ searchParams }: { searchParams: P
   const [opts, initial] = await Promise.all([editorOptions(), blankEditor("invoice", client)]);
   return (
     <>
-      <PageHeader title="Facture manuelle" subtitle="Brouillon — le numéro définitif est attribué à l'émission, après approbation du CEO" />
+      <PageHeader eyebrow="Ventes" title="Facture manuelle" subtitle="Brouillon — le numéro définitif est attribué à l'émission, après approbation du CEO" />
       <div className="mb-6"><Notice tone="sky">Pour facturer un devis accepté (acompte 50 %, solde, définitive), ouvrez le devis et utilisez « Facturer ce devis » : les acomptes sont alors déduits automatiquement.</Notice></div>
       <DocEditor kind="invoice" id={null} initial={initial} {...opts} canEditTerms save={saveInvoiceAction} dealsAction={hubspotDealsAction} />
     </>

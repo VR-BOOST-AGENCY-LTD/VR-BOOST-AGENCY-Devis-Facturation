@@ -16,7 +16,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   const opts = await editorOptions();
   return (
     <>
-      <PageHeader title={`Modifier — ${INVOICE_TYPE[inv.type]} (brouillon)`} />
+      <PageHeader eyebrow="Ventes" title={`Modifier — ${INVOICE_TYPE[inv.type]} (brouillon)`} />
       <DocEditor
         kind="invoice"
         id={inv.id}

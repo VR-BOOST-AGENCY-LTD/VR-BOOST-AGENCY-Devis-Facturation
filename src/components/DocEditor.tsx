@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { ActionResult } from "@/app/actions";
+import { toast } from "./Toaster";
 import { computeTotals, lineTotalCents } from "@/lib/calc";
 import { formatCents, formatPercent } from "@/lib/format";
 
@@ -138,6 +139,7 @@ export function DocEditor({
             };
       const r = await save(id, payload);
       if (!r.ok) return setError(r.error);
+      toast("Brouillon enregistré");
       router.push(`/${kind === "quote" ? "devis" : "factures"}/${r.data}`);
       router.refresh();
     });
@@ -240,7 +242,7 @@ export function DocEditor({
               let ht = 0;
               try { ht = lineTotalCents(parsed[i]); } catch { /* saisie en cours */ }
               return (
-                <div key={i} className="grid gap-3 px-5 py-4 md:grid-cols-12">
+                <div key={i} className="anim-pop grid gap-3 px-5 py-4 transition-colors hover:bg-mist/30 md:grid-cols-12">
                   <div className="flex items-start gap-2 md:col-span-12">
                     <span className="mt-2 w-6 text-xs font-semibold text-brand">{String(i + 1).padStart(2, "0")}</span>
                     <div className="flex-1 space-y-2">

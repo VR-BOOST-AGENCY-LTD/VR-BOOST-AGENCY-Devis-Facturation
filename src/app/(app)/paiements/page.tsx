@@ -23,15 +23,15 @@ export default async function PaymentsPage() {
   const total = open.reduce((s, i) => s + remainingDue(cents(i.netToPay), cents(i.amountPaid), cents(i.amountCredited)), 0);
   return (
     <>
-      <PageHeader title="Suivi des paiements" subtitle={<>Reste à encaisser : <Money cents={total} className="font-semibold text-ink" /></>} />
+      <PageHeader eyebrow="Ventes" title="Suivi des paiements" subtitle={<>Reste à encaisser : <Money cents={total} className="font-semibold text-ink" /></>} />
       <section className="card mb-6 overflow-x-auto">
         <h2 className="border-b border-line px-5 py-4 text-sm font-semibold">Factures ouvertes</h2>
         <table className="w-full min-w-[760px]">
-          <thead className="bg-mist/50"><tr>
+          <thead className="border-b border-line/80"><tr>
             <th className="th">Facture</th><th className="th">Client</th><th className="th">Échéance</th>
             <th className="th text-right">Net à payer</th><th className="th text-right">Encaissé</th><th className="th text-right">Reste</th><th className="th">Statut</th>
           </tr></thead>
-          <tbody className="divide-y divide-line">
+          <tbody className="stagger divide-y divide-line/70">
             {open.map((i) => (
               <tr key={i.id}>
                 <td className="td font-medium"><Link className="hover:underline" href={`/factures/${i.id}`}>{INVOICE_TYPE[i.type]} {i.reference}</Link></td>
@@ -50,8 +50,8 @@ export default async function PaymentsPage() {
       <section className="card overflow-x-auto">
         <h2 className="border-b border-line px-5 py-4 text-sm font-semibold">Derniers règlements</h2>
         <table className="w-full min-w-[700px]">
-          <thead className="bg-mist/50"><tr><th className="th">Date</th><th className="th">Facture</th><th className="th">Client</th><th className="th">Mode</th><th className="th">Saisi par</th><th className="th text-right">Montant</th></tr></thead>
-          <tbody className="divide-y divide-line">
+          <thead className="border-b border-line/80"><tr><th className="th">Date</th><th className="th">Facture</th><th className="th">Client</th><th className="th">Mode</th><th className="th">Saisi par</th><th className="th text-right">Montant</th></tr></thead>
+          <tbody className="stagger divide-y divide-line/70">
             {payments.map((p) => (
               <tr key={p.id} className={p.cancelledAt ? "text-muted line-through" : ""}>
                 <td className="td">{formatDateShort(p.date)}</td>

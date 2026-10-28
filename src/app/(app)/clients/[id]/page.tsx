@@ -25,7 +25,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
   if (!c) notFound();
   return (
     <>
-      <PageHeader title={c.name} subtitle={c.hubspotCompanyId ? `Lié à HubSpot (entreprise ${c.hubspotCompanyId})` : "Non lié à HubSpot"} actions={
+      <PageHeader eyebrow="Ventes" title={c.name} subtitle={c.hubspotCompanyId ? `Lié à HubSpot (entreprise ${c.hubspotCompanyId})` : "Non lié à HubSpot"} actions={
         <>
           <Link href={`/devis/nouveau?client=${c.id}`} className="btn-brand">+ Devis</Link>
           <Link href={`/factures/nouveau?client=${c.id}`} className="btn-ghost">+ Facture</Link>

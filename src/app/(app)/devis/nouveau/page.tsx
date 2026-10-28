@@ -14,7 +14,7 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
   const [opts, initial, s] = await Promise.all([editorOptions(), blankEditor("quote", client), getSettings()]);
   return (
     <>
-      <PageHeader title="Nouveau devis" subtitle="Brouillon — numéro attribué à l'approbation du CEO" />
+      <PageHeader eyebrow="Ventes" title="Nouveau devis" subtitle="Brouillon — numéro attribué à l'approbation du CEO" />
       <DocEditor kind="quote" id={null} initial={initial} {...opts} canEditTerms={can(user, "terms.edit") || s.salesCanEditTerms}
         save={saveQuoteAction} dealsAction={hubspotDealsAction} />
     </>

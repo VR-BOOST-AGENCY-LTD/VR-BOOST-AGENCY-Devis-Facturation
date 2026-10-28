@@ -2,6 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { ActionResult } from "@/app/actions";
+import { toast } from "./Toaster";
 
 type Draft = { to: string; cc: string; subject: string; message: string };
 
@@ -19,7 +20,6 @@ export function SendEmailButton({
   const router = useRouter();
   const [d, setD] = useState<Draft | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
   const [pending, start] = useTransition();
 
   if (!enabled) {
@@ -28,7 +28,6 @@ export function SendEmailButton({
   const open = () =>
     start(async () => {
       setError(null);
-      setDone(false);
       const r = await draft();
       if (!r.ok) return setError(r.error);
       setD(r.data as Draft);
@@ -39,19 +38,18 @@ export function SendEmailButton({
       setError(null);
       const r = await send(d);
       if (!r.ok) return setError(r.error);
-      setDone(true);
       setD(null);
+      toast("E-mail envoyé avec le PDF officiel en pièce jointe");
       router.refresh();
     });
 
   return (
     <>
       <button type="button" className="btn-brand" onClick={open} disabled={pending}>{pending && !d ? "…" : label}</button>
-      {done ? <span className="basis-full rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">E-mail envoyé avec le PDF officiel en pièce jointe.</span> : null}
       {error && !d ? <span role="alert" className="basis-full rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</span> : null}
       {d ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" role="dialog" aria-modal>
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="anim-fade fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4 backdrop-blur-[3px]" role="dialog" aria-modal>
+          <div className="anim-pop max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[24px] bg-white p-6 shadow-[var(--shadow-lift)]">
             <h2 className="mb-4 text-base font-semibold">{label}</h2>
             <div className="space-y-3">
               <div>

@@ -5,7 +5,8 @@ import { db } from "@/lib/db";
 import { formatDateShort } from "@/lib/format";
 import { cents } from "@/server/common";
 import { isOverdue } from "@/server/invoices";
-import { Badge, Empty, Money, PageHeader } from "@/components/ui";
+import { Badge, Empty, Money, PageHeader, Segmented } from "@/components/ui";
+import { SearchBox } from "@/components/SearchBox";
 import { INVOICE_STATUS, INVOICE_TYPE } from "@/components/status";
 import { RowActions, RowLink } from "@/components/RowLink";
 
@@ -28,22 +29,22 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const filters = ["DRAFT", "PENDING_APPROVAL", "ISSUED", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"];
   return (
     <>
-      <PageHeader title="Factures" subtitle={`${list.length} document(s)`} actions={<Link href="/factures/nouveau" className="btn-brand">+ Facture manuelle</Link>} />
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Link href="/factures" className={`rounded-full px-3 py-1 text-xs ${!statut && !type ? "bg-ink text-white" : "bg-white ring-1 ring-line"}`}>Toutes</Link>
-        {filters.map((f) => (
-          <Link key={f} href={`/factures?statut=${f}`} className={`rounded-full px-3 py-1 text-xs ${statut === f ? "bg-ink text-white" : "bg-white ring-1 ring-line"}`}>{INVOICE_STATUS[f].label}</Link>
-        ))}
-        <Link href="/factures?type=CREDIT_NOTE" className={`rounded-full px-3 py-1 text-xs ${type === "CREDIT_NOTE" ? "bg-ink text-white" : "bg-white ring-1 ring-line"}`}>Avoirs</Link>
-        <form className="ml-auto"><input name="q" defaultValue={q} placeholder="Rechercher…" className="input w-56" /></form>
+      <PageHeader eyebrow="Ventes" title="Factures" subtitle={`${list.length} document(s)`} actions={<Link href="/factures/nouveau" className="btn-brand">+ Facture manuelle</Link>} />
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <Segmented active={type === "CREDIT_NOTE" ? "CREDIT_NOTE" : statut ?? "ALL"} items={[
+          { key: "ALL", label: "Toutes", href: "/factures" },
+          ...filters.map((f) => ({ key: f, label: INVOICE_STATUS[f].label, href: `/factures?statut=${f}` })),
+          { key: "CREDIT_NOTE", label: "Avoirs", href: "/factures?type=CREDIT_NOTE" },
+        ]} />
+        <div className="ml-auto"><SearchBox defaultValue={q} placeholder="Client, référence, intitulé…" /></div>
       </div>
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[1000px]">
-          <thead className="border-b border-line bg-mist/50"><tr>
+          <thead className="border-b border-line/80"><tr>
             <th className="th">Référence</th><th className="th">Type</th><th className="th">Client</th><th className="th">Émise</th>
             <th className="th">Échéance</th><th className="th text-right">Net à payer</th><th className="th text-right">Reste dû</th><th className="th">Statut</th><th className="th text-right">Actions</th>
           </tr></thead>
-          <tbody className="divide-y divide-line">
+          <tbody className="stagger divide-y divide-line/70">
             {list.map((i) => (
               <RowLink key={i.id} href={`/factures/${i.id}`}>
                 <td className="td font-medium"><Link href={`/factures/${i.id}`} className="hover:underline">{i.reference ?? "Brouillon"}</Link></td>

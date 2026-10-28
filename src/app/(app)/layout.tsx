@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { can } from "@/lib/permissions";
 import { Nav } from "@/components/Nav";
+import { Toaster } from "@/components/Toaster";
 import { logoutAction } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -13,21 +14,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       (await db.invoice.count({ where: { status: "PENDING_APPROVAL" } }))
     : 0;
   const items = [
-    { href: "/", label: "Tableau de bord", icon: "grid" },
-    { href: "/clients", label: "Clients", icon: "users" },
-    { href: "/devis", label: "Devis", icon: "file" },
-    { href: "/factures", label: "Factures", icon: "receipt" },
-    ...(can(user, "quote.approve") ? [{ href: "/validation", label: "Validation CEO", icon: "check", badge: pending }] : []),
-    { href: "/paiements", label: "Paiements", icon: "wallet" },
-    { href: "/catalogue", label: "Catalogue", icon: "list" },
-    ...(can(user, "settings.view") ? [{ href: "/parametres", label: "Paramètres", icon: "cog" }] : []),
-    ...(can(user, "users.manage") ? [{ href: "/utilisateurs", label: "Utilisateurs", icon: "users" }] : []),
-    ...(can(user, "audit.view") ? [{ href: "/journal", label: "Journal d'audit", icon: "clock" }] : []),
+    { href: "/", label: "Tableau de bord", icon: "grid", section: "Pilotage" },
+    ...(can(user, "quote.approve") ? [{ href: "/validation", label: "Validation CEO", icon: "check", badge: pending, section: "Pilotage" }] : []),
+    { href: "/devis", label: "Devis", icon: "file", section: "Ventes" },
+    { href: "/factures", label: "Factures", icon: "receipt", section: "Ventes" },
+    { href: "/paiements", label: "Paiements", icon: "wallet", section: "Ventes" },
+    { href: "/clients", label: "Clients", icon: "users", section: "Ventes" },
+    { href: "/catalogue", label: "Catalogue", icon: "list", section: "Ventes" },
+    ...(can(user, "settings.view") ? [{ href: "/parametres", label: "Paramètres", icon: "cog", section: "Administration" }] : []),
+    ...(can(user, "users.manage") ? [{ href: "/utilisateurs", label: "Utilisateurs", icon: "shield", section: "Administration" }] : []),
+    ...(can(user, "audit.view") ? [{ href: "/journal", label: "Journal d'audit", icon: "clock", section: "Administration" }] : []),
   ];
   return (
-    <div className="min-h-screen lg:flex">
+    <div className="min-h-screen lg:flex lg:gap-3 lg:p-3">
       <Nav items={items} user={{ name: user.name, role: user.role === "CEO" ? "CEO — Administrateur" : "Commerciale" }} logout={logoutAction} />
-      <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 lg:py-8">{children}</main>
+      <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-5 lg:py-5">{children}</main>
+      <Toaster />
     </div>
   );
 }

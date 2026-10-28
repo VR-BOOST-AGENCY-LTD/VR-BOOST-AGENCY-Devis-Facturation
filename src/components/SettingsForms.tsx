@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { formatReference } from "@/lib/format";
 import { useState, useTransition } from "react";
 import type { ActionResult } from "@/app/actions";
+import { toast } from "./Toaster";
 
 function useSubmit() {
   const router = useRouter();
@@ -13,6 +14,7 @@ function useSubmit() {
       setMsg(null);
       const r = await fn();
       setMsg(r.ok ? { ok: true, text: r.message ?? "Enregistré" } : { ok: false, text: r.error });
+      if (r.ok) toast(r.message ?? "Enregistré");
       if (r.ok) router.refresh();
     });
   const Msg = () => (msg ? <p className={`rounded-lg px-3 py-2 text-sm ${msg.ok ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700"}`}>{msg.text}</p> : null);

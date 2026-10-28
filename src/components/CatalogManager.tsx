@@ -20,8 +20,8 @@ export function CatalogManager({ items, save, toggle }: {
     <div className="space-y-6">
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[640px]">
-          <thead className="bg-mist/50"><tr><th className="th">Prestation</th><th className="th">Unité</th><th className="th text-right">Prix indicatif HT</th><th className="th">TVA</th><th className="th" /></tr></thead>
-          <tbody className="divide-y divide-line">
+          <thead className="border-b border-line/80"><tr><th className="th">Prestation</th><th className="th">Unité</th><th className="th text-right">Prix indicatif HT</th><th className="th">TVA</th><th className="th" /></tr></thead>
+          <tbody className="stagger divide-y divide-line/70">
             {items.map((i) => (
               <tr key={i.id} className={i.active ? "" : "opacity-50"}>
                 <td className="td"><p className="font-medium">{i.designation}</p>{i.description ? <p className="text-xs text-muted">{i.description}</p> : null}</td>

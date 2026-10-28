@@ -27,7 +27,7 @@ export default async function SettingsPage() {
   const seq = (series: "QUOTE" | "INVOICE") => seqs.find((x) => x.series === series);
   return (
     <>
-      <PageHeader title="Paramètres" subtitle="Réservé au CEO — toute modification est journalisée" />
+      <PageHeader eyebrow="Administration" title="Paramètres" subtitle="Réservé au CEO — toute modification est journalisée" />
       <div className="space-y-6">
         <section id="numerotation" className="card p-5">
           <h2 className="mb-1 text-sm font-semibold">Numérotation automatique</h2>
