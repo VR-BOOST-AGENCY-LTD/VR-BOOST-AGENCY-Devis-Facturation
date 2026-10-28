@@ -60,6 +60,8 @@ export default async function SettingsPage() {
             accountHolder: s.accountHolder, defaultVatRate: num(s.defaultVatRate), defaultDepositPercent: num(s.defaultDepositPercent),
             defaultValidityDays: s.defaultValidityDays, defaultPaymentTerms: s.defaultPaymentTerms, invoicePaymentTerms: s.invoicePaymentTerms,
             invoiceDueDays: s.invoiceDueDays, salesCanEditTerms: s.salesCanEditTerms,
+            notificationsEnabled: s.notificationsEnabled, remindersEnabled: s.remindersEnabled,
+            reminderIntervalDays: s.reminderIntervalDays, reminderMaxCount: s.reminderMaxCount,
             quoteNumberFormat: s.quoteNumberFormat, invoiceNumberFormat: s.invoiceNumberFormat, creditNoteNumberFormat: s.creditNoteNumberFormat,
           }}
         />

@@ -4,7 +4,7 @@ import { computeTotals } from "@/lib/calc";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { conflict, forbidden, invalid, notFound } from "@/lib/errors";
-import { addDays, formatReference, todayUtc } from "@/lib/format";
+import { addDays, formatReference, quoteReference, todayUtc } from "@/lib/format";
 import { allocateNumber } from "@/lib/numbering";
 import { assertCan, assertNotSelfApproval, can, type Actor } from "@/lib/permissions";
 import { getSettings } from "@/lib/settings";
@@ -284,4 +284,90 @@ export async function deleteDraftQuote(actor: Actor, id: string) {
 
 export function isQuoteExpired(q: { status: string; validUntil: Date | null }, today = todayUtc()) {
   return ["APPROVED", "SENT"].includes(q.status) && q.validUntil != null && q.validUntil < today;
+}
+
+/**
+ * Duplication : nouveau brouillon (V1, sans numéro) reprenant intitulé, prestations et conditions
+ * d'un devis existant. Les conditions commerciales repassent par les règles de permission.
+ */
+export async function duplicateQuote(actor: Actor, id: string) {
+  assertCan(actor, "quote.create");
+  const src = await db.quote.findUnique({ where: { id }, include: { lines: { orderBy: { position: "asc" } } } });
+  if (!src) throw notFound();
+  return createQuote(actor, {
+    clientId: src.clientId,
+    title: src.title,
+    subtitle: src.subtitle,
+    projectName: src.projectName,
+    validityDays: src.validityDays,
+    depositPercent: num(src.depositPercent),
+    paymentTerms: src.paymentTerms,
+    deliverables: src.deliverables,
+    deadlines: src.deadlines,
+    specificConditions: src.specificConditions,
+    notes: src.notes,
+    lines: src.lines.map((l) => ({
+      designation: l.designation,
+      description: l.description,
+      quantity: num(l.quantity),
+      unit: l.unit,
+      unitPrice: num(l.unitPrice),
+      vatRate: num(l.vatRate),
+      discountPercent: num(l.discountPercent),
+    })),
+  }).then(async (q) => {
+    await audit(db, actor, "quote.duplicate", "QUOTE", q.id,
+      `Brouillon créé par duplication du devis ${src.reference ? quoteReference(src.reference, src.version) : "(brouillon)"}`, { from: id });
+    return q;
+  });
+}
+
+const SIGNED_TYPES: Record<string, { ext: string; magic: number[] }> = {
+  "application/pdf": { ext: "pdf", magic: [0x25, 0x50, 0x44, 0x46] }, // %PDF
+  "image/jpeg": { ext: "jpg", magic: [0xff, 0xd8, 0xff] },
+  "image/png": { ext: "png", magic: [0x89, 0x50, 0x4e, 0x47] },
+};
+export const SIGNED_MAX_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Bon pour accord : archive le devis signé renvoyé par le client (PDF ou photo), en ajout seul.
+ * Peut marquer le devis comme accepté dans la même opération.
+ */
+export async function attachSignedQuote(
+  actor: Actor,
+  quoteId: string,
+  file: { name: string; type: string; bytes: Uint8Array },
+  opts: { markAccepted: boolean },
+) {
+  assertCan(actor, "quote.markOutcome");
+  const kind = SIGNED_TYPES[file.type];
+  if (!kind) throw invalid("Format accepté : PDF, JPG ou PNG.");
+  if (file.bytes.length === 0) throw invalid("Fichier vide.");
+  if (file.bytes.length > SIGNED_MAX_BYTES) throw invalid("Fichier trop volumineux (10 Mo maximum).");
+  if (!kind.magic.every((b, i) => file.bytes[i] === b)) throw invalid("Le contenu du fichier ne correspond pas à son format.");
+
+  const q = await db.quote.findUnique({ where: { id: quoteId } });
+  if (!q) throw notFound();
+  if (!["APPROVED", "SENT", "ACCEPTED"].includes(q.status)) {
+    throw conflict("Le bon pour accord se joint à un devis approuvé, envoyé ou accepté.");
+  }
+  if (q.status !== "ACCEPTED" && opts.markAccepted) await markQuoteOutcome(actor, quoteId, "ACCEPTED");
+
+  const crypto = await import("node:crypto");
+  const ref = (q.reference ?? "devis").replace(/[^\w-]+/g, "-");
+  const doc = await db.documentFile.create({
+    data: {
+      entityType: "QUOTE_SIGNED",
+      entityId: quoteId,
+      reference: q.reference ?? "",
+      filename: `BON-POUR-ACCORD_${ref}${q.version > 1 ? `-V${q.version}` : ""}.${kind.ext}`,
+      mime: file.type,
+      data: new Uint8Array(file.bytes),
+      sha256: crypto.createHash("sha256").update(file.bytes).digest("hex"),
+      createdById: actor.id,
+    },
+  });
+  await audit(db, actor, "quote.signedAttached", "QUOTE", quoteId,
+    `Bon pour accord signé joint au devis ${q.reference ?? ""} (${file.name}, ${Math.round(file.bytes.length / 1024)} Ko)`, { fileId: doc.id, sha256: doc.sha256 });
+  return doc;
 }

@@ -64,6 +64,21 @@ export function SettingsForm({ initial, save }: { initial: Settings; save: (d: u
         </div>
       </section>
       <section className="card p-5">
+        <h2 className="mb-4 text-sm font-semibold">Notifications et relances</h2>
+        <div className="grid gap-4 sm:grid-cols-4">
+          <label className="flex items-start gap-3 text-sm sm:col-span-4">
+            <input type="checkbox" className="mt-0.5" checked={Boolean(s.notificationsEnabled)} onChange={(e) => setS({ ...s, notificationsEnabled: e.target.checked })} />
+            <span>Notifications internes par e-mail <span className="block text-xs text-muted">Le CEO est prévenu à chaque soumission ; l&apos;auteur est prévenu de l&apos;approbation ou du renvoi.</span></span>
+          </label>
+          <label className="flex items-start gap-3 text-sm sm:col-span-4">
+            <input type="checkbox" className="mt-0.5" checked={Boolean(s.remindersEnabled)} onChange={(e) => setS({ ...s, remindersEnabled: e.target.checked })} />
+            <span>Relances automatiques des factures en retard <span className="block text-xs text-muted">E-mail au client avec la facture jointe, copie interne. Exécution quotidienne (tâche planifiée).</span></span>
+          </label>
+          {field("reminderIntervalDays", "Intervalle entre relances (jours)")}
+          {field("reminderMaxCount", "Nombre maximum de relances")}
+        </div>
+      </section>
+      <section className="card p-5">
         <h2 className="mb-1 text-sm font-semibold">Format des numéros</h2>
         <p className="mb-4 text-xs text-muted">{"{n}"} = numéro sur 5 chiffres · {"{yyyy}"} = année · {"{yy}"} = année sur 2 chiffres. S&apos;applique aux prochains documents émis.</p>
         <div className="grid gap-4 sm:grid-cols-3">

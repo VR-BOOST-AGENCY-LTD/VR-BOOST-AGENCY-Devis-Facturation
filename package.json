@@ -17,7 +17,8 @@
     "test:integration": "vitest run tests/integration",
     "user:password": "tsx scripts/set-password.ts",
     "db:prepare-production": "tsx scripts/prepare-production.ts",
-    "user:create": "tsx scripts/create-user.ts"
+    "user:create": "tsx scripts/create-user.ts",
+    "reminders": "node scripts/send-reminders.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",

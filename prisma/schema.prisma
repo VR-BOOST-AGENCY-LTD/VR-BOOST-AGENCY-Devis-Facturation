@@ -257,6 +257,8 @@ model Invoice {
   netToPay     Decimal @default(0) @db.Decimal(14, 2)
   amountPaid   Decimal @default(0) @db.Decimal(14, 2)
   amountCredited Decimal @default(0) @db.Decimal(14, 2)
+  lastReminderAt DateTime?
+  reminderCount  Int       @default(0)
 
   createdById      String
   createdBy        User      @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
@@ -356,6 +358,10 @@ model CompanySettings {
   creditNoteNumberFormat String   @default("AV-{n}/{yy}")
   accountantValidatedAt DateTime?
   accountantName        String?
+  notificationsEnabled  Boolean   @default(true)
+  remindersEnabled      Boolean   @default(false)
+  reminderIntervalDays  Int       @default(7)
+  reminderMaxCount      Int       @default(3)
   updatedAt             DateTime  @updatedAt
 }
 

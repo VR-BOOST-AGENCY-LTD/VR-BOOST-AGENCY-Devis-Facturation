@@ -11,8 +11,9 @@ import { PdfPreview } from "@/components/PdfPreview";
 import { Timeline } from "@/components/Timeline";
 import { Badge, Money, Notice, PageHeader } from "@/components/ui";
 import { INVOICE_TYPE } from "@/components/status";
-import { draftEmailAction, hubspotSyncDocAction, invoiceFromQuoteAction, quoteOpAction, sendEmailAction } from "@/app/actions";
+import { draftEmailAction, hubspotSyncDocAction, invoiceFromQuoteAction, quoteOpAction, sendEmailAction, uploadSignedQuoteAction } from "@/app/actions";
 import { SendEmailButton } from "@/components/SendEmailButton";
+import { SignedQuoteUpload } from "@/components/SignedQuoteUpload";
 import { mailEnabled } from "@/server/mailer";
 
 export default async function QuotePage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,6 +30,11 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
     },
   });
   if (!q) notFound();
+  const signedFiles = await db.documentFile.findMany({
+    where: { entityType: "QUOTE_SIGNED", entityId: q.id },
+    select: { id: true, filename: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+  });
   const versions = await db.quote.findMany({
     where: { OR: [{ id: q.rootId ?? q.id }, { rootId: q.rootId ?? q.id }] },
     select: { id: true, version: true, status: true },
@@ -72,6 +78,9 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
             ) : null}
             {["APPROVED", "SENT", "ACCEPTED", "REFUSED"].includes(q.status) && !q.nextVersion && activeInvoices.length === 0 ? (
               <ActionButton action={op("revise")} label="Nouvelle version" goTo="/devis/" confirm="Une nouvelle version (même numéro) sera créée en brouillon et devra être revalidée par le CEO." />
+            ) : null}
+            {can(user, "quote.create") ? (
+              <ActionButton action={op("duplicate")} label="Dupliquer" goTo="/devis/" confirm="Un nouveau brouillon reprenant toutes les prestations et conditions sera créé. Vous pourrez changer le client, les prix et le contenu avant de le soumettre." />
             ) : null}
             {q.status === "DRAFT" && q.number == null ? (
               <ActionButton action={op("delete")} label="Supprimer" variant="danger" confirm="Supprimer définitivement ce brouillon ?" goTo="/devis" />
@@ -123,6 +132,24 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
               {q.approvedBy ? <div className="flex justify-between"><dt className="text-muted">Approuvé par</dt><dd>{q.approvedBy.name}{q.signed ? " (signé)" : ""}</dd></div> : null}
             </dl>
           </section>
+          {["APPROVED", "SENT", "ACCEPTED"].includes(q.status) || signedFiles.length > 0 ? (
+            <section className="card p-5 text-sm">
+              <h2 className="mb-3 font-semibold">Bon pour accord signé</h2>
+              {signedFiles.length > 0 ? (
+                <ul className="mb-4 space-y-2">
+                  {signedFiles.map((f) => (
+                    <li key={f.id} className="flex items-center justify-between gap-2">
+                      <a className="truncate underline" href={`/api/files/${f.id}`} target="_blank" rel="noreferrer">{f.filename}</a>
+                      <a className="btn-ghost px-2 py-1 text-xs" href={`/api/files/${f.id}?download=1`}>↓</a>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="mb-3 text-muted">Aucun document signé joint pour l&apos;instant.</p>}
+              {["APPROVED", "SENT", "ACCEPTED"].includes(q.status) && can(user, "quote.markOutcome") ? (
+                <SignedQuoteUpload upload={uploadSignedQuoteAction.bind(null, q.id)} accepted={q.status === "ACCEPTED"} />
+              ) : null}
+            </section>
+          ) : null}
           {versions.length > 1 ? (
             <section className="card p-5 text-sm">
               <h2 className="mb-3 font-semibold">Versions</h2>

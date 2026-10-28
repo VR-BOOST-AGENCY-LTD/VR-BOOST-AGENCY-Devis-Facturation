@@ -5,7 +5,7 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ZodError } from "zod";
-import { getCurrentUser, login, logout, type CurrentUser } from "@/lib/auth";
+import { currentSessionHash, getCurrentUser, login, logout, type CurrentUser } from "@/lib/auth";
 import { AppError } from "@/lib/errors";
 import { formatZodError } from "@/lib/validation";
 import { archiveOfficialPdf } from "@/pdf/render";
@@ -16,6 +16,9 @@ import * as clients from "@/server/clients";
 import * as admin from "@/server/admin";
 import * as hubspot from "@/server/hubspot";
 import * as mailer from "@/server/mailer";
+import * as notify from "@/server/notify";
+import * as reminders from "@/server/reminders";
+import * as users from "@/server/users";
 
 export type ActionResult<T = unknown> = { ok: true; data?: T; message?: string } | { ok: false; error: string };
 
@@ -73,13 +76,22 @@ export async function saveQuoteAction(id: string | null, data: unknown) {
 export async function quoteOpAction(id: string, op: string, extra: { comment?: string; applySignature?: boolean } = {}) {
   return run(async (u) => {
     switch (op) {
-      case "submit": return (await quotes.submitQuote(u, id)).id;
+      case "submit": {
+        const q = await quotes.submitQuote(u, id);
+        after(() => notify.notifySubmitted("QUOTE", id, u));
+        return q.id;
+      }
       case "approve": {
         const q = await quotes.approveQuote(u, id, { applySignature: Boolean(extra.applySignature) });
         afterOfficial("QUOTE", q.id, u);
+        after(() => notify.notifyDecision("QUOTE", id, u, "approved"));
         return q.id;
       }
-      case "reject": return (await quotes.rejectQuote(u, id, extra.comment ?? "")).id;
+      case "reject": {
+        const q = await quotes.rejectQuote(u, id, extra.comment ?? "");
+        after(() => notify.notifyDecision("QUOTE", id, u, "rejected", extra.comment));
+        return q.id;
+      }
       case "sent": {
         const q = await quotes.markQuoteSent(u, id);
         after(() => hubspot.syncDocumentToHubspot("QUOTE", id, u));
@@ -92,6 +104,7 @@ export async function quoteOpAction(id: string, op: string, extra: { comment?: s
         return q.id;
       }
       case "revise": return (await quotes.reviseQuote(u, id)).id;
+      case "duplicate": return (await quotes.duplicateQuote(u, id)).id;
       case "cancel": return (await quotes.cancelQuote(u, id, extra.comment ?? "Annulé")).id;
       case "delete": await quotes.deleteDraftQuote(u, id); return null;
       default: throw new AppError("Opération inconnue");
@@ -121,13 +134,22 @@ export async function invoiceFromQuoteAction(
 export async function invoiceOpAction(id: string, op: string, extra: { comment?: string; applySignature?: boolean } = {}) {
   return run(async (u) => {
     switch (op) {
-      case "submit": return (await invoices.submitInvoice(u, id)).id;
+      case "submit": {
+        const inv = await invoices.submitInvoice(u, id);
+        after(() => notify.notifySubmitted("INVOICE", id, u));
+        return inv.id;
+      }
       case "approve": {
         const inv = await invoices.approveAndIssueInvoice(u, id, { applySignature: Boolean(extra.applySignature) });
         afterOfficial("INVOICE", inv.id, u);
+        after(() => notify.notifyDecision("INVOICE", id, u, "approved"));
         return inv.id;
       }
-      case "reject": return (await invoices.rejectInvoice(u, id, extra.comment ?? "")).id;
+      case "reject": {
+        const inv = await invoices.rejectInvoice(u, id, extra.comment ?? "");
+        after(() => notify.notifyDecision("INVOICE", id, u, "rejected", extra.comment));
+        return inv.id;
+      }
       case "delete": await invoices.deleteDraftInvoice(u, id); return null;
       case "creditFull": return (await invoices.createCreditNote(u, id, { reason: extra.comment ?? "", full: true })).id;
       case "rectify": return (await invoices.rectifyInvoice(u, id, extra.comment ?? "")).rectification.id;
@@ -225,4 +247,40 @@ export async function sendEmailAction(entityType: "QUOTE" | "INVOICE", id: strin
     if (entityType === "QUOTE") after(() => hubspot.syncDocumentToHubspot("QUOTE", id, u));
     return r;
   }, "E-mail envoyé");
+}
+
+export async function sendReminderAction(invoiceId: string) {
+  return run((u) => reminders.sendReminder(u, invoiceId), "Relance envoyée au client");
+}
+
+// ---------------------------------------------------------------- comptes
+
+export async function changePasswordAction(input: { current: string; next: string; confirm: string }) {
+  return run(async (u) => users.changeOwnPassword(u, input, await currentSessionHash()), "Mot de passe modifié");
+}
+
+export async function createUserAction(input: unknown) {
+  return run((u) => users.createUser(u, input).then((x) => x.id), "Compte créé");
+}
+
+export async function updateUserAction(id: string, input: { name?: string; role?: "CEO" | "SALES"; active?: boolean }) {
+  return run((u) => users.updateUser(u, id, input).then(() => null), "Compte mis à jour");
+}
+
+export async function resetUserPasswordAction(id: string, input: { password: string; confirm: string }) {
+  return run((u) => users.resetUserPassword(u, id, input), "Mot de passe réinitialisé");
+}
+
+export async function uploadSignedQuoteAction(quoteId: string, form: FormData) {
+  return run(async (u) => {
+    const file = form.get("file");
+    if (!(file instanceof File)) throw new AppError("Aucun fichier sélectionné.");
+    const doc = await quotes.attachSignedQuote(
+      u,
+      quoteId,
+      { name: file.name, type: file.type, bytes: new Uint8Array(await file.arrayBuffer()) },
+      { markAccepted: form.get("markAccepted") === "on" },
+    );
+    return doc.id;
+  }, "Bon pour accord enregistré");
 }

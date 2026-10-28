@@ -15,7 +15,7 @@ import { PdfPreview } from "@/components/PdfPreview";
 import { Timeline } from "@/components/Timeline";
 import { Badge, Money, Notice, PageHeader } from "@/components/ui";
 import { INVOICE_TYPE, PAYMENT_METHOD } from "@/components/status";
-import { cancelPaymentAction, draftEmailAction, hubspotSyncDocAction, invoiceOpAction, recordPaymentAction, sendEmailAction } from "@/app/actions";
+import { cancelPaymentAction, sendReminderAction, draftEmailAction, hubspotSyncDocAction, invoiceOpAction, recordPaymentAction, sendEmailAction } from "@/app/actions";
 import { SendEmailButton } from "@/components/SendEmailButton";
 import { mailEnabled } from "@/server/mailer";
 
@@ -64,6 +64,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                 <ActionButton action={op("approve")} label="Approuver et émettre" variant="brand" signatureOption
                   confirm="Le prochain numéro de la série FACTURES sera attribué définitivement. La facture deviendra non modifiable." />
               </>
+            ) : null}
+            {issued && !isCredit && ["ISSUED", "PARTIALLY_PAID"].includes(inv.status) && due > 0 && can(user, "document.send") ? (
+              <ActionButton action={sendReminderAction.bind(null, inv.id)} label={overdue ? "Relancer le client" : "Envoyer un rappel"}
+                confirm={`Un e-mail de ${inv.reminderCount === 0 ? "rappel" : `relance n°${inv.reminderCount + 1}`} sera envoyé à ${inv.client.email ?? "(aucune adresse sur la fiche client)"}, avec la facture jointe.`} />
             ) : null}
             {issued && can(user, "document.send") ? (
               <SendEmailButton enabled={mailEnabled()} draft={draftEmailAction.bind(null, "INVOICE", inv.id)} send={sendEmailAction.bind(null, "INVOICE", inv.id)} />
@@ -114,6 +118,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               ) : null}
               <div className="flex justify-between border-t border-line pt-2"><dt className="text-muted">Émise le</dt><dd>{formatDateLong(inv.issueDate)}</dd></div>
               {!isCredit ? <div className="flex justify-between"><dt className="text-muted">Échéance</dt><dd>{formatDateLong(inv.dueDate)}</dd></div> : null}
+              {inv.reminderCount > 0 ? <div className="flex justify-between"><dt className="text-muted">Relances</dt><dd>{inv.reminderCount} (dernière le {formatDateShort(inv.lastReminderAt)})</dd></div> : null}
               {inv.approvedBy ? <div className="flex justify-between"><dt className="text-muted">Approuvée par</dt><dd>{inv.approvedBy.name}{inv.signed ? " (signée)" : ""}</dd></div> : null}
             </dl>
           </section>

@@ -98,3 +98,9 @@ export async function requirePermission(perm: Permission): Promise<CurrentUser> 
   if (!can(u, perm)) redirect("/?refus=1");
   return u;
 }
+
+/** Empreinte du jeton de la session courante (pour conserver cette session lors d'une révocation). */
+export async function currentSessionHash(): Promise<string | null> {
+  const token = (await cookies()).get(COOKIE)?.value;
+  return token ? sha256(token) : null;
+}

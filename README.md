@@ -121,6 +121,20 @@ fiche client), objet et message modifiables, **PDF officiel archivé joint**. Un
 Chaque envoi est journalisé (destinataires, empreinte du PDF). Configuration SMTP dans `.env` (`SMTP_*`, `MAIL_FROM`) ;
 Google Workspace : `smtp.gmail.com:465` avec un mot de passe d'application **du compte indiqué dans `SMTP_USER`**.
 
+## Notifications, relances, comptes
+
+- **Notifications internes** (Paramètres) : le CEO reçoit un e-mail à chaque soumission ; l'auteur est prévenu de
+  l'approbation ou du renvoi (avec le motif).
+- **Relances** des factures en retard : bouton « Relancer le client » sur la facture, ou automatique (tâche
+  quotidienne `node scripts/send-reminders.mjs`, route `/api/cron/reminders` protégée par `CRON_SECRET`).
+  Ton progressif (rappel, deuxième relance, dernière relance), facture jointe, copie interne (`MAIL_REMINDER_CC`
+  ou `SMTP_USER`), intervalle et maximum réglables.
+- **Dupliquer un devis** : nouveau brouillon reprenant prestations et conditions.
+- **Mon compte** : changement de mot de passe (les autres sessions sont déconnectées).
+- **Utilisateurs** (CEO) : création, rôle, désactivation immédiate, réinitialisation ; au moins un CEO actif.
+- **Bon pour accord signé** : PDF/JPG/PNG (10 Mo max, format vérifié) joint au devis, archivé en ajout seul,
+  avec passage du devis à « Accepté ».
+
 ## Mise en service (remise à zéro des données de test)
 
 ```bash

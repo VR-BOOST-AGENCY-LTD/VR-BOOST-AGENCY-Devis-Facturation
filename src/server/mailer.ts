@@ -23,7 +23,27 @@ function transport() {
   });
 }
 
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+export const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/** Envoi générique (notifications internes, relances). */
+export async function sendMail(m: {
+  to: string[];
+  cc?: string[];
+  subject: string;
+  text: string;
+  attachments?: { filename: string; content: Buffer; contentType: string }[];
+}) {
+  if (!mailEnabled()) throw new AppError("Envoi d'e-mails non configuré (SMTP).", "CONFLICT");
+  return transport().sendMail({
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    replyTo: process.env.MAIL_REPLY_TO || undefined,
+    to: m.to,
+    cc: m.cc?.length ? m.cc : undefined,
+    subject: m.subject,
+    text: m.text,
+    attachments: m.attachments,
+  });
+}
 
 function parseList(v: string | null | undefined): string[] {
   return (v ?? "").split(/[,;\s]+/).map((x) => x.trim()).filter(Boolean);

@@ -61,6 +61,7 @@ SMTP_PORT=465
 SMTP_USER=meryem.lasseri@vrboostagency.com
 SMTP_PASSWORD=<mot de passe d'application Google>
 MAIL_FROM=VR BOOST AGENCY <meryem.lasseri@vrboostagency.com>
+CRON_SECRET=<48 caractères aléatoires : openssl rand -hex 24>
 ```
 
 5. **Advanced → Volumes / Mounts** → **Bind Mount** :
@@ -98,3 +99,12 @@ npm run user:create -- meryem.lasseri@vrboostagency.com "Meryem Lasseri" SALES
 
 Chaque `git push` sur `main` peut redéployer automatiquement (Dokploy → Application → *Auto Deploy*),
 ou manuellement via **Deploy**. Les données (PostgreSQL) et les fichiers privés ne sont pas affectés.
+
+## Relances automatiques (tâche planifiée)
+
+1. Ajouter `CRON_SECRET` dans **Environment** (voir ci-dessus), puis redéployer.
+2. Dokploy › `facturation-app` › **Schedules** › *Create Schedule* :
+   - Name : `Relances factures` · Cron : `0 9 * * *` (tous les jours à 9 h)
+   - Shell : `sh` · Command : `node /app/scripts/send-reminders.mjs`
+3. Activer les relances dans l'application : **Paramètres › Notifications et relances**
+   (intervalle et nombre maximum de relances réglables). Sans cette case, la tâche ne fait rien.

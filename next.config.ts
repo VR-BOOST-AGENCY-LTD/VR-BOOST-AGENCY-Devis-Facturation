@@ -11,6 +11,8 @@ const securityHeaders = [
 
 const config: NextConfig = {
   poweredByHeader: false,
+  // Envoi du devis signé par le client (PDF / photo, 10 Mo max côté application)
+  experimental: { serverActions: { bodySizeLimit: "12mb" } },
   // @react-pdf et pg restent côté serveur (Node)
   serverExternalPackages: ["@react-pdf/renderer", "pg", "nodemailer"],
   // Les actifs privés (cachet, signature, polices) sont lus depuis le disque à l'exécution

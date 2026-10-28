@@ -61,9 +61,12 @@ export function Nav({ items, user, logout }: { items: Item[]; user: { name: stri
         <div className="border-t border-white/10 px-6 py-4">
           <p className="text-sm font-medium">{user.name}</p>
           <p className="text-xs text-white/50">{user.role}</p>
-          <form action={logout}>
-            <button className="mt-3 text-xs text-white/60 underline-offset-2 hover:text-white hover:underline">Se déconnecter</button>
-          </form>
+          <div className="mt-3 flex items-center gap-4">
+            <Link href="/compte" onClick={() => setOpen(false)} className="text-xs text-white/60 underline-offset-2 hover:text-white hover:underline">Mon compte</Link>
+            <form action={logout}>
+              <button className="text-xs text-white/60 underline-offset-2 hover:text-white hover:underline">Se déconnecter</button>
+            </form>
+          </div>
         </div>
       </aside>
     </>
