@@ -6,6 +6,7 @@ RUN npm ci
 
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # URL factice : prisma.config.ts l'exige pour générer le client ; aucune connexion n'a lieu au build
@@ -14,6 +15,8 @@ RUN rm -rf private/* .env* && npx prisma generate && npx next build
 
 FROM node:22-bookworm-slim AS run
 WORKDIR /app
+# OpenSSL requis par le moteur de migrations Prisma
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production APP_ENV=production PRIVATE_ASSETS_DIR=/secrets/vrboost NEXT_TELEMETRY_DISABLED=1
 RUN useradd --system --uid 1001 app
 COPY --from=build --chown=app /app/package.json /app/package-lock.json /app/prisma.config.ts ./
