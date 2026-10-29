@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDateLong, formatPercent, quoteReference } from "@/lib/format";
+import { catalogKey } from "@/lib/catalog";
 import { can } from "@/lib/permissions";
 import { breakdownOf, cents, num } from "@/server/common";
 import { isQuoteExpired } from "@/server/quotes";
@@ -11,7 +12,7 @@ import { PdfPreview } from "@/components/PdfPreview";
 import { Timeline } from "@/components/Timeline";
 import { Badge, Money, Notice, PageHeader } from "@/components/ui";
 import { INVOICE_TYPE } from "@/components/status";
-import { draftEmailAction, hubspotSyncDocAction, invoiceFromQuoteAction, quoteOpAction, sendEmailAction, uploadSignedQuoteAction } from "@/app/actions";
+import { addQuoteLinesToCatalogAction, draftEmailAction, hubspotSyncDocAction, invoiceFromQuoteAction, quoteOpAction, sendEmailAction, uploadSignedQuoteAction } from "@/app/actions";
 import { SendEmailButton } from "@/components/SendEmailButton";
 import { SignedQuoteUpload } from "@/components/SignedQuoteUpload";
 import { WorkflowSteps } from "@/components/WorkflowSteps";
@@ -26,11 +27,12 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       client: true,
       createdBy: { select: { name: true } },
       approvedBy: { select: { name: true } },
-      invoices: { orderBy: { createdAt: "asc" } },
+      invoices: { where: { deletedAt: null }, orderBy: { createdAt: "asc" } },
       nextVersion: { select: { id: true, version: true, status: true } },
+      lines: { select: { designation: true }, orderBy: { position: "asc" } },
     },
   });
-  if (!q) notFound();
+  if (!q || q.deletedAt) notFound();
   const signedFiles = await db.documentFile.findMany({
     where: { entityType: "QUOTE_SIGNED", entityId: q.id },
     select: { id: true, filename: true, createdAt: true },
@@ -38,9 +40,12 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   });
   const versions = await db.quote.findMany({
     where: { OR: [{ id: q.rootId ?? q.id }, { rootId: q.rootId ?? q.id }] },
-    select: { id: true, version: true, status: true },
+    select: { id: true, version: true, status: true, deletedAt: true },
     orderBy: { version: "asc" },
   });
+  const liveVersions = versions.filter((v) => !v.deletedAt);
+  const catalogKeys = new Set((await db.catalogItem.findMany({ select: { designation: true } })).map((c) => catalogKey(c.designation)));
+  const notInCatalog = [...new Set(q.lines.map((l) => l.designation.trim()).filter((x) => x && !catalogKeys.has(catalogKey(x))))];
   const op = (name: string) => quoteOpAction.bind(null, q.id, name);
   const isCeo = can(user, "quote.approve");
   const activeInvoices = q.invoices.filter((i) => i.status !== "CANCELLED" && i.type !== "CREDIT_NOTE");
@@ -83,8 +88,9 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
             {can(user, "quote.create") ? (
               <ActionButton action={op("duplicate")} label="Dupliquer" goTo="/devis/" confirm="Un nouveau brouillon reprenant toutes les prestations et conditions sera créé. Vous pourrez changer le client, les prix et le contenu avant de le soumettre." />
             ) : null}
-            {q.status === "DRAFT" && q.number == null ? (
-              <ActionButton action={op("delete")} label="Supprimer" variant="danger" confirm="Supprimer définitivement ce brouillon ?" goTo="/devis" />
+            {can(user, "quote.delete") ? (
+              <ActionButton action={op("delete")} label="Supprimer" variant="danger" goTo="/devis" prompt="Motif de la suppression (conservé dans le journal)"
+                confirm={`Supprimer « Devis ${q.reference ? quoteReference(q.reference, q.version) : `(brouillon) ${q.title}`} » ? Il disparaîtra des listes et ne pourra plus être modifié.${q.number != null ? " Son numéro reste consommé et son PDF archivé est conservé." : ""} Les factures liées doivent être supprimées avant.`} />
             ) : null}
             {isCeo && !["CANCELLED", "SUPERSEDED"].includes(q.status) && q.number != null && activeInvoices.length === 0 ? (
               <ActionButton action={op("cancel")} label="Annuler" variant="danger" prompt="Motif d'annulation" />
@@ -143,6 +149,22 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
               {q.approvedBy ? <div className="flex justify-between"><dt className="text-muted">Approuvé par</dt><dd>{q.approvedBy.name}{q.signed ? " (signé)" : ""}</dd></div> : null}
             </dl>
           </section>
+          {can(user, "catalog.edit") && q.lines.length > 0 ? (
+            <section className="card p-5 text-sm">
+              <h2 className="mb-2 font-semibold">Catalogue</h2>
+              {notInCatalog.length > 0 ? (
+                <>
+                  <p className="mb-3 text-muted">
+                    {notInCatalog.length === 1 ? "1 prestation de ce devis n'est pas encore au catalogue." : `${notInCatalog.length} prestations de ce devis ne sont pas encore au catalogue.`}
+                  </p>
+                  <ActionButton action={addQuoteLinesToCatalogAction.bind(null, q.id)} label="Ajouter au catalogue"
+                    confirm={`Prestations enregistrées pour de futurs devis (désignation, description, unité, prix HT, TVA) : ${notInCatalog.join(" · ")}. Ce devis n'est pas modifié.`} />
+                </>
+              ) : (
+                <p className="text-muted">✓ Toutes les prestations de ce devis figurent au catalogue.</p>
+              )}
+            </section>
+          ) : null}
           {["APPROVED", "SENT", "ACCEPTED"].includes(q.status) || signedFiles.length > 0 ? (
             <section className="card p-5 text-sm">
               <h2 className="mb-3 font-semibold">Bon pour accord signé</h2>
@@ -161,11 +183,11 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
               ) : null}
             </section>
           ) : null}
-          {versions.length > 1 ? (
+          {liveVersions.length > 1 ? (
             <section className="card p-5 text-sm">
               <h2 className="mb-3 font-semibold">Versions</h2>
               <ul className="space-y-2">
-                {versions.map((v) => (
+                {liveVersions.map((v) => (
                   <li key={v.id} className="flex items-center justify-between">
                     <Link href={`/devis/${v.id}`} className={v.id === q.id ? "font-semibold" : "hover:underline"}>V{v.version}</Link>
                     <Badge kind="quote" status={v.status} />

@@ -13,11 +13,13 @@ export type Permission =
   | "quote.markOutcome"
   | "quote.revise"
   | "quote.cancel"
+  | "quote.delete"
   | "invoice.create"
   | "invoice.editDraft"
   | "invoice.submit"
   | "invoice.approveAndIssue"
   | "invoice.creditNote"
+  | "invoice.delete"
   | "payment.record"
   | "payment.cancel"
   | "signature.apply"
@@ -53,8 +55,10 @@ const MATRIX: Record<Role, Set<Permission>> = {
     ...SALES,
     "quote.approve",
     "quote.cancel",
+    "quote.delete",
     "invoice.approveAndIssue",
     "invoice.creditNote",
+    "invoice.delete",
     "payment.record",
     "payment.cancel",
     "signature.apply",

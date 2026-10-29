@@ -8,13 +8,13 @@ import { num } from "@/server/common";
 import { editorOptions, linesToEditor } from "@/server/queries";
 import { DocEditor } from "@/components/DocEditor";
 import { PageHeader } from "@/components/ui";
-import { hubspotDealsAction, saveQuoteAction } from "@/app/actions";
+import { addLinesToCatalogAction, hubspotDealsAction, saveQuoteAction } from "@/app/actions";
 
 export default async function EditQuotePage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requirePermission("quote.editDraft");
   const { id } = await params;
   const q = await db.quote.findUnique({ where: { id }, include: { lines: true } });
-  if (!q) notFound();
+  if (!q || q.deletedAt) notFound();
   if (!["DRAFT", "PENDING_APPROVAL"].includes(q.status)) redirect(`/devis/${id}`);
   const [opts, s] = await Promise.all([editorOptions(), getSettings()]);
   return (
@@ -33,6 +33,7 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
         {...opts}
         canEditTerms={can(user, "terms.edit") || s.salesCanEditTerms}
         save={saveQuoteAction}
+        addToCatalog={can(user, "catalog.edit") ? addLinesToCatalogAction : undefined}
         dealsAction={hubspotDealsAction}
       />
     </>

@@ -53,7 +53,6 @@ export function Nav({ items, user, logout }: { items: Item[]; user: { name: stri
         <div className="px-6 pt-6 pb-5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.svg" alt="VR BOOST Agency" className="h-7" />
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">Devis & Factures</p>
         </div>
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-3">
           {items.map((it) => {

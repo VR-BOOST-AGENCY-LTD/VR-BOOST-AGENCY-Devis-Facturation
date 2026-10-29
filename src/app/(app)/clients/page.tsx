@@ -15,7 +15,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const { q } = await searchParams;
   const clients = await db.client.findMany({
     where: { archived: false, ...(q ? { OR: [{ name: { contains: q, mode: "insensitive" } }, { ice: { contains: q } }] } : {}) },
-    include: { _count: { select: { quotes: true, invoices: true } } },
+    include: { _count: { select: { quotes: { where: { deletedAt: null } }, invoices: { where: { deletedAt: null } } } } },
     orderBy: { name: "asc" },
   });
   return (

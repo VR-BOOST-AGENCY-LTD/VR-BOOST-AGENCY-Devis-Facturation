@@ -14,11 +14,11 @@ export default async function PaymentsPage() {
   await requireUser();
   const [open, payments] = await Promise.all([
     db.invoice.findMany({
-      where: { status: { in: ["ISSUED", "PARTIALLY_PAID"] }, type: { not: "CREDIT_NOTE" } },
+      where: { status: { in: ["ISSUED", "PARTIALLY_PAID"] }, type: { not: "CREDIT_NOTE" }, deletedAt: null },
       include: { client: { select: { name: true } } },
       orderBy: { dueDate: "asc" },
     }),
-    db.payment.findMany({ include: { invoice: { select: { id: true, reference: true, client: { select: { name: true } } } }, recordedBy: { select: { name: true } } }, orderBy: { date: "desc" }, take: 100 }),
+    db.payment.findMany({ where: { invoice: { deletedAt: null } }, include: { invoice: { select: { id: true, reference: true, client: { select: { name: true } } } }, recordedBy: { select: { name: true } } }, orderBy: { date: "desc" }, take: 100 }),
   ]);
   const total = open.reduce((s, i) => s + remainingDue(cents(i.netToPay), cents(i.amountPaid), cents(i.amountCredited)), 0);
   return (

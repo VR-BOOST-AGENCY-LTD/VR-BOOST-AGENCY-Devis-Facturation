@@ -29,13 +29,13 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       client: true,
       quote: { select: { id: true, reference: true, version: true } },
       relatedInvoice: { select: { id: true, reference: true, type: true } },
-      relatedFrom: { select: { id: true, reference: true, type: true, status: true, isRectification: true } },
+      relatedFrom: { where: { deletedAt: null }, select: { id: true, reference: true, type: true, status: true, isRectification: true } },
       payments: { orderBy: { date: "asc" }, include: { recordedBy: { select: { name: true } } } },
       createdBy: { select: { name: true } },
       approvedBy: { select: { name: true } },
     },
   });
-  if (!inv) notFound();
+  if (!inv || inv.deletedAt) notFound();
   const settings = await getSettings();
   const op = (name: string) => invoiceOpAction.bind(null, inv.id, name);
   const isCeo = can(user, "invoice.approveAndIssue");
@@ -73,7 +73,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             {issued && can(user, "document.send") ? (
               <SendEmailButton enabled={mailEnabled()} draft={draftEmailAction.bind(null, "INVOICE", inv.id)} send={sendEmailAction.bind(null, "INVOICE", inv.id)} />
             ) : null}
-            {inv.status === "DRAFT" && !issued ? <ActionButton action={op("delete")} label="Supprimer" variant="danger" confirm="Supprimer ce brouillon ?" goTo="/factures" /> : null}
+            {can(user, "invoice.delete") ? (
+              <ActionButton action={op("delete")} label="Supprimer" variant="danger" goTo="/factures" prompt="Motif de la suppression (conservé dans le journal)"
+                confirm={`Supprimer « ${label} ${inv.reference ?? `(brouillon) ${inv.title}`} » ? Elle disparaîtra des listes, du tableau de bord et des relances, et ne pourra plus être modifiée.${issued ? " Son numéro reste consommé et son PDF archivé est conservé ; pour annuler comptablement une facture émise, l'avoir reste la voie normale." : ""} Les paiements et documents liés doivent être annulés ou supprimés avant.`} />
+            ) : null}
             {issued && !isCredit && inv.status !== "CANCELLED" && can(user, "invoice.creditNote") ? (
               <>
                 <ActionButton action={op("creditFull")} label="Créer un avoir" goTo="/factures/" prompt="Motif de l'avoir"

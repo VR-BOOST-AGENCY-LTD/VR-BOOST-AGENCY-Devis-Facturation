@@ -13,8 +13,8 @@ export const metadata = { title: "Validation CEO" };
 export default async function ValidationPage() {
   await requirePermission("quote.approve");
   const [quotes, invoices] = await Promise.all([
-    db.quote.findMany({ where: { status: "PENDING_APPROVAL" }, include: { client: true, createdBy: true }, orderBy: { submittedAt: "asc" } }),
-    db.invoice.findMany({ where: { status: "PENDING_APPROVAL" }, include: { client: true, createdBy: true }, orderBy: { submittedAt: "asc" } }),
+    db.quote.findMany({ where: { status: "PENDING_APPROVAL", deletedAt: null }, include: { client: true, createdBy: true }, orderBy: { submittedAt: "asc" } }),
+    db.invoice.findMany({ where: { status: "PENDING_APPROVAL", deletedAt: null }, include: { client: true, createdBy: true }, orderBy: { submittedAt: "asc" } }),
   ]);
   const when = (d: Date | null) => d?.toLocaleString("fr-MA", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Casablanca" }) ?? "";
   return (

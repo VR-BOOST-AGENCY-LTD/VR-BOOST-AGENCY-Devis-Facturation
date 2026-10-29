@@ -16,7 +16,7 @@ export async function recordPayment(actor: Actor, input: unknown) {
   return db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "Invoice" WHERE id = ${data.invoiceId} FOR UPDATE`;
     const inv = await tx.invoice.findUnique({ where: { id: data.invoiceId } });
-    if (!inv) throw notFound();
+    if (!inv || inv.deletedAt) throw notFound();
     if (inv.type === "CREDIT_NOTE") throw invalid("Un avoir ne reçoit pas de paiement.");
     if (!["ISSUED", "PARTIALLY_PAID"].includes(inv.status)) {
       throw conflict("Paiement possible uniquement sur une facture émise non soldée.");

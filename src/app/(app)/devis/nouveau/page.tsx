@@ -4,7 +4,7 @@ import { getSettings } from "@/lib/settings";
 import { blankEditor, editorOptions } from "@/server/queries";
 import { DocEditor } from "@/components/DocEditor";
 import { PageHeader } from "@/components/ui";
-import { hubspotDealsAction, saveQuoteAction } from "@/app/actions";
+import { addLinesToCatalogAction, hubspotDealsAction, saveQuoteAction } from "@/app/actions";
 
 export const metadata = { title: "Nouveau devis" };
 
@@ -16,7 +16,8 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader eyebrow="Ventes" title="Nouveau devis" subtitle="Brouillon — numéro attribué à l'approbation du CEO" />
       <DocEditor kind="quote" id={null} initial={initial} {...opts} canEditTerms={can(user, "terms.edit") || s.salesCanEditTerms}
-        save={saveQuoteAction} dealsAction={hubspotDealsAction} />
+        save={saveQuoteAction} dealsAction={hubspotDealsAction}
+        addToCatalog={can(user, "catalog.edit") ? addLinesToCatalogAction : undefined} />
     </>
   );
 }

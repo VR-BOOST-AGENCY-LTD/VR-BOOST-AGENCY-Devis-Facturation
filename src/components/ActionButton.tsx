@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import type { ActionResult } from "@/app/actions";
 import { toast } from "./Toaster";
 
@@ -43,7 +44,7 @@ export function ActionButton({
       }
       setOpen(false);
       toast(r.message ?? `${label} — effectué`);
-      if (goTo && typeof r.data === "string") router.push(`${goTo}${r.data}`);
+      if (goTo) router.push(typeof r.data === "string" ? `${goTo}${r.data}` : goTo);
       else router.refresh();
     });
 
@@ -57,7 +58,8 @@ export function ActionButton({
       >
         {pending ? "…" : label}
       </button>
-      {open ? (
+      {/* Portail : la fenêtre ne doit pas être confinée par une carte (backdrop-filter crée un bloc conteneur) */}
+      {open ? createPortal(
         <div className="anim-fade fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4 backdrop-blur-[3px]" role="dialog" aria-modal
           onKeyDown={(e) => e.key === "Escape" && !pending && setOpen(false)}>
           <div className="anim-pop w-full max-w-md rounded-[24px] bg-white p-6 shadow-[var(--shadow-lift)]">
@@ -91,7 +93,8 @@ export function ActionButton({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       ) : null}
     </>
   );

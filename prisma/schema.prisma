@@ -78,6 +78,8 @@ model User {
   quotesApproved   Quote[]     @relation("QuoteApprovedBy")
   invoicesCreated  Invoice[]   @relation("InvoiceCreatedBy")
   invoicesApproved Invoice[]   @relation("InvoiceApprovedBy")
+  quotesDeleted    Quote[]     @relation("QuoteDeletedBy")
+  invoicesDeleted  Invoice[]   @relation("InvoiceDeletedBy")
   payments         Payment[]   @relation("PaymentRecordedBy")
   auditLogs        AuditLog[]
   clients          Client[]
@@ -184,6 +186,11 @@ model Quote {
   sentAt           DateTime?
   acceptedAt       DateTime?
   refusedAt        DateTime?
+  // Suppression logique (CEO) : le document reste en base pour la traçabilité, masqué partout
+  deletedAt        DateTime?
+  deletedById      String?
+  deletedBy        User?     @relation("QuoteDeletedBy", fields: [deletedById], references: [id])
+  deletionReason   String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -268,6 +275,11 @@ model Invoice {
   approvedBy       User?     @relation("InvoiceApprovedBy", fields: [approvedById], references: [id])
   signed           Boolean   @default(false)
   rejectionComment String?
+  // Suppression logique (CEO) : le document reste en base pour la traçabilité, masqué partout
+  deletedAt        DateTime?
+  deletedById      String?
+  deletedBy        User?     @relation("InvoiceDeletedBy", fields: [deletedById], references: [id])
+  deletionReason   String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

@@ -17,6 +17,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const { statut, type, q } = await searchParams;
   const list = await db.invoice.findMany({
     where: {
+      deletedAt: null,
       ...(statut && statut !== "OVERDUE" ? { status: statut as never } : {}),
       ...(statut === "OVERDUE" ? { status: { in: ["ISSUED", "PARTIALLY_PAID"] }, dueDate: { lt: new Date() } } : {}),
       ...(type ? { type: type as never } : {}),

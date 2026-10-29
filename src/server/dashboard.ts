@@ -16,16 +16,16 @@ export async function dashboardData() {
 
   const [invoices, payments, quotes, open] = await Promise.all([
     db.invoice.findMany({
-      where: { number: { not: null }, issueDate: { gte: start } },
+      where: { number: { not: null }, issueDate: { gte: start }, deletedAt: null },
       select: { type: true, issueDate: true, totalHt: true, totalTtc: true, deductedTtc: true, netToPay: true },
     }),
-    db.payment.findMany({ where: { cancelledAt: null, date: { gte: start } }, select: { amount: true, date: true } }),
+    db.payment.findMany({ where: { cancelledAt: null, date: { gte: start }, invoice: { deletedAt: null } }, select: { amount: true, date: true } }),
     db.quote.findMany({
-      where: { number: { not: null }, issueDate: { gte: start }, status: { notIn: ["SUPERSEDED", "CANCELLED"] } },
-      select: { status: true, totalTtc: true, sentAt: true, invoices: { select: { status: true, type: true, number: true } } },
+      where: { number: { not: null }, issueDate: { gte: start }, status: { notIn: ["SUPERSEDED", "CANCELLED"] }, deletedAt: null },
+      select: { status: true, totalTtc: true, sentAt: true, invoices: { where: { deletedAt: null }, select: { status: true, type: true, number: true } } },
     }),
     db.invoice.findMany({
-      where: { type: { not: "CREDIT_NOTE" }, status: { in: ["ISSUED", "PARTIALLY_PAID"] } },
+      where: { type: { not: "CREDIT_NOTE" }, status: { in: ["ISSUED", "PARTIALLY_PAID"] }, deletedAt: null },
       select: { netToPay: true, amountPaid: true, amountCredited: true, dueDate: true, client: { select: { id: true, name: true } } },
     }),
   ]);

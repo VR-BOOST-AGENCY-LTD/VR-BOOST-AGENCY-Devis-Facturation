@@ -1,4 +1,5 @@
 // Lectures pour l'interface (aucune écriture).
+import { catalogKey } from "@/lib/catalog";
 import { db } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import type { EditorData, EditorLine } from "@/components/DocEditor";
@@ -11,11 +12,13 @@ export async function editorOptions() {
       orderBy: { name: "asc" },
       select: { id: true, name: true, ice: true, city: true, hubspotCompanyId: true },
     }),
-    db.catalogItem.findMany({ where: { active: true }, orderBy: { designation: "asc" } }),
+    db.catalogItem.findMany({ orderBy: { designation: "asc" } }),
   ]);
   return {
     clients,
-    catalog: catalog.map((c) => ({
+    // Clés de toutes les prestations (désactivées comprises) pour signaler les lignes déjà au catalogue
+    catalogKeys: catalog.map((c) => catalogKey(c.designation)),
+    catalog: catalog.filter((c) => c.active).map((c) => ({
       id: c.id,
       designation: c.designation,
       description: c.description,

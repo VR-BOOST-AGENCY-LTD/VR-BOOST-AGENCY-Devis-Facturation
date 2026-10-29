@@ -210,21 +210,26 @@ export async function markQuoteOutcome(actor: Actor, id: string, outcome: "ACCEP
 export async function reviseQuote(actor: Actor, id: string) {
   assertCan(actor, "quote.revise");
   return db.$transaction(async (tx) => {
-    const q = await tx.quote.findUnique({ where: { id }, include: { lines: true, nextVersion: true, invoices: true } });
-    if (!q) throw notFound();
+    const q = await tx.quote.findUnique({
+      where: { id },
+      include: { lines: true, nextVersion: true, invoices: { where: { deletedAt: null } } },
+    });
+    if (!q || q.deletedAt) throw notFound();
     if (!["APPROVED", "SENT", "REFUSED", "ACCEPTED"].includes(q.status)) {
       throw conflict("Seul un devis approuvé, envoyé, accepté ou refusé peut être révisé.");
     }
-    if (q.nextVersion) throw conflict("Une version plus récente existe déjà.");
+    if (q.nextVersion && !q.nextVersion.deletedAt) throw conflict("Une version plus récente existe déjà.");
     if (q.invoices.some((i) => i.status !== "CANCELLED")) {
       throw conflict("Ce devis a déjà été facturé : émettez un avoir avant de le réviser.");
     }
+    // Les versions supprimées gardent leur numéro de version : on reprend après la plus haute
+    const last = await tx.quote.aggregate({ _max: { version: true }, where: { OR: [{ id: q.rootId ?? q.id }, { rootId: q.rootId ?? q.id }] } });
     const copy = await tx.quote.create({
       data: {
         number: q.number,
         year: q.year,
         reference: q.reference,
-        version: q.version + 1,
+        version: Math.max(q.version, last._max.version ?? 0) + 1,
         rootId: q.rootId ?? q.id,
         previousVersionId: q.id,
         status: "DRAFT",
@@ -259,8 +264,8 @@ export async function reviseQuote(actor: Actor, id: string) {
 export async function cancelQuote(actor: Actor, id: string, reason: string) {
   assertCan(actor, "quote.cancel");
   return db.$transaction(async (tx) => {
-    const q = await tx.quote.findUnique({ where: { id }, include: { invoices: true } });
-    if (!q) throw notFound();
+    const q = await tx.quote.findUnique({ where: { id }, include: { invoices: { where: { deletedAt: null } } } });
+    if (!q || q.deletedAt) throw notFound();
     if (["CANCELLED", "SUPERSEDED"].includes(q.status)) throw conflict("Devis déjà clôturé.");
     if (q.invoices.some((i) => i.status !== "CANCELLED")) throw conflict("Devis facturé : annulation impossible.");
     const updated = await tx.quote.update({ where: { id }, data: { status: "CANCELLED" } });
@@ -269,16 +274,50 @@ export async function cancelQuote(actor: Actor, id: string, reason: string) {
   });
 }
 
-/** Suppression : uniquement un brouillon jamais numéroté. */
-export async function deleteDraftQuote(actor: Actor, id: string) {
-  assertCan(actor, "quote.editDraft");
+/** Statut d'une version remplacée, reconstitué à partir de ses dates (restauration après suppression de la suivante). */
+function statusBeforeSuperseded(q: { sentAt: Date | null; acceptedAt: Date | null; refusedAt: Date | null }) {
+  if (q.refusedAt) return "REFUSED" as const;
+  if (q.acceptedAt) return "ACCEPTED" as const;
+  if (q.sentAt) return "SENT" as const;
+  return "APPROVED" as const;
+}
+
+/**
+ * Suppression (CEO uniquement) : suppression logique. Le devis reste en base — numéro consommé,
+ * PDF archivé et journal conservés — mais disparaît des listes et ne peut plus être modifié.
+ * Refusée si des factures actives y sont rattachées ou si une version plus récente existe.
+ */
+export async function deleteQuote(actor: Actor, id: string, reason: string) {
+  assertCan(actor, "quote.delete");
+  if (!reason?.trim()) throw invalid("Le motif de la suppression est obligatoire.");
   return db.$transaction(async (tx) => {
-    const q = await tx.quote.findUnique({ where: { id } });
-    if (!q) throw notFound();
-    if (q.number != null || q.status !== "DRAFT") throw conflict("Seul un brouillon non numéroté peut être supprimé.");
-    if (actor.role !== "CEO" && q.createdById !== actor.id) throw forbidden();
-    await tx.quote.delete({ where: { id } });
-    await audit(tx, actor, "quote.delete", "QUOTE", id, `Brouillon de devis supprimé : ${q.title}`);
+    await tx.$queryRaw`SELECT id FROM "Quote" WHERE id = ${id} FOR UPDATE`;
+    const q = await tx.quote.findUnique({
+      where: { id },
+      include: { invoices: { where: { deletedAt: null } }, nextVersion: true, previousVersion: true },
+    });
+    if (!q || q.deletedAt) throw notFound();
+    if (q.invoices.length > 0) {
+      throw conflict(`Ce devis a des factures rattachées (${q.invoices.map((i) => i.reference ?? "brouillon").join(", ")}) : supprimez-les d'abord.`);
+    }
+    if (q.nextVersion && !q.nextVersion.deletedAt) {
+      throw conflict(`Une version plus récente (V${q.nextVersion.version}) existe : supprimez-la d'abord.`);
+    }
+    const label = q.reference ? quoteReference(q.reference, q.version) : `brouillon « ${q.title} »`;
+    // Libère le lien de version (unique) pour permettre une nouvelle révision de la version précédente
+    await tx.quote.update({
+      where: { id },
+      data: { deletedAt: new Date(), deletedById: actor.id, deletionReason: reason.trim(), previousVersionId: null },
+    });
+    let restored: ReturnType<typeof statusBeforeSuperseded> | null = null;
+    if (q.previousVersion && q.previousVersion.status === "SUPERSEDED" && !q.previousVersion.deletedAt) {
+      restored = statusBeforeSuperseded(q.previousVersion);
+      await tx.quote.update({ where: { id: q.previousVersion.id }, data: { status: restored } });
+    }
+    await audit(tx, actor, "quote.delete", "QUOTE", id, `Devis ${label} supprimé : ${reason.trim()}`, {
+      status: q.status, number: q.number, version: q.version, totalTtc: num(q.totalTtc),
+      previousVersionId: q.previousVersionId, previousVersionRestoredTo: restored,
+    });
   });
 }
 
@@ -293,7 +332,7 @@ export function isQuoteExpired(q: { status: string; validUntil: Date | null }, t
 export async function duplicateQuote(actor: Actor, id: string) {
   assertCan(actor, "quote.create");
   const src = await db.quote.findUnique({ where: { id }, include: { lines: { orderBy: { position: "asc" } } } });
-  if (!src) throw notFound();
+  if (!src || src.deletedAt) throw notFound();
   return createQuote(actor, {
     clientId: src.clientId,
     title: src.title,
@@ -347,7 +386,7 @@ export async function attachSignedQuote(
   if (!kind.magic.every((b, i) => file.bytes[i] === b)) throw invalid("Le contenu du fichier ne correspond pas à son format.");
 
   const q = await db.quote.findUnique({ where: { id: quoteId } });
-  if (!q) throw notFound();
+  if (!q || q.deletedAt) throw notFound();
   if (!["APPROVED", "SENT", "ACCEPTED"].includes(q.status)) {
     throw conflict("Le bon pour accord se joint à un devis approuvé, envoyé ou accepté.");
   }

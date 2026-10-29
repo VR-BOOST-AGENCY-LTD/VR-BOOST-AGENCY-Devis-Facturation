@@ -78,7 +78,7 @@ type QuoteWithInvoices = NonNullable<Awaited<ReturnType<typeof loadQuoteForInvoi
 async function loadQuoteForInvoicing(tx: Tx, quoteId: string) {
   return tx.quote.findUnique({
     where: { id: quoteId },
-    include: { lines: { orderBy: { position: "asc" } }, client: true, invoices: true },
+    include: { lines: { orderBy: { position: "asc" } }, client: true, invoices: { where: { deletedAt: null } } },
   });
 }
 
@@ -114,7 +114,7 @@ export async function createInvoiceFromQuote(
   return db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "Quote" WHERE id = ${quoteId} FOR UPDATE`;
     const q = await loadQuoteForInvoicing(tx, quoteId);
-    if (!q) throw notFound("Devis introuvable");
+    if (!q || q.deletedAt) throw notFound("Devis introuvable");
     if (q.status !== "ACCEPTED") throw conflict("Seul un devis accepté par le client peut être facturé.");
 
     const active = engaged(q);
@@ -292,15 +292,42 @@ export async function rejectInvoice(actor: Actor, id: string, comment: string) {
   });
 }
 
-export async function deleteDraftInvoice(actor: Actor, id: string) {
-  assertCan(actor, "invoice.editDraft");
+/**
+ * Suppression (CEO uniquement) : suppression logique. La facture reste en base — numéro consommé,
+ * PDF archivé et journal conservés — mais disparaît des listes, du tableau de bord et des relances.
+ * Refusée tant que des paiements, des avoirs ou une facture de solde en dépendent.
+ */
+export async function deleteInvoice(actor: Actor, id: string, reason: string) {
+  assertCan(actor, "invoice.delete");
+  if (!reason?.trim()) throw invalid("Le motif de la suppression est obligatoire.");
   return db.$transaction(async (tx) => {
-    const inv = await tx.invoice.findUnique({ where: { id } });
-    if (!inv) throw notFound();
-    if (inv.number != null || inv.status !== "DRAFT") throw conflict("Seul un brouillon non émis peut être supprimé.");
-    if (actor.role !== "CEO" && inv.createdById !== actor.id) throw forbidden();
-    await tx.invoice.delete({ where: { id } });
-    await audit(tx, actor, "invoice.delete", "INVOICE", id, `Brouillon de facture supprimé : ${inv.title}`);
+    await tx.$queryRaw`SELECT id FROM "Invoice" WHERE id = ${id} FOR UPDATE`;
+    const inv = await tx.invoice.findUnique({
+      where: { id },
+      include: { relatedFrom: { where: { deletedAt: null }, select: { reference: true, type: true, isRectification: true } } },
+    });
+    if (!inv || inv.deletedAt) throw notFound();
+    if (cents(inv.amountPaid) > 0) {
+      throw conflict("Des paiements sont enregistrés sur cette facture : annulez-les d'abord.");
+    }
+    if (inv.type === "CREDIT_NOTE" && inv.number != null) {
+      throw conflict("Un avoir émis ne peut pas être supprimé : il a déjà crédité la facture d'origine.");
+    }
+    if (inv.relatedFrom.length > 0) {
+      const refs = inv.relatedFrom.map((r) => `${r.isRectification ? "rectificative" : TYPE_LABEL[r.type].toLowerCase()} ${r.reference ?? "(brouillon)"}`);
+      throw conflict(`Documents liés à cette facture : ${refs.join(", ")}. Supprimez-les d'abord.`);
+    }
+    if (inv.type === "DEPOSIT" && inv.quoteId) {
+      const balances = await tx.invoice.findMany({ where: { quoteId: inv.quoteId, type: "BALANCE", deletedAt: null } });
+      const using = balances.find((b) => b.status === "DRAFT" || b.status === "PENDING_APPROVAL"
+        || ((b.deductions as Deduction[] | null) ?? []).some((d) => d.invoiceId === inv.id));
+      if (using) throw conflict(`La facture de solde ${using.reference ?? "(brouillon)"} tient compte de cet acompte : supprimez-la d'abord.`);
+    }
+    const label = `${TYPE_LABEL[inv.type]} ${inv.reference ?? `(brouillon « ${inv.title} »)`}`;
+    await tx.invoice.update({ where: { id }, data: { deletedAt: new Date(), deletedById: actor.id, deletionReason: reason.trim() } });
+    await audit(tx, actor, "invoice.delete", "INVOICE", id, `${label} supprimée : ${reason.trim()}`, {
+      type: inv.type, status: inv.status, number: inv.number, totalTtc: num(inv.totalTtc), quoteId: inv.quoteId,
+    });
   });
 }
 
@@ -329,7 +356,7 @@ export async function approveAndIssueInvoice(actor: Actor, id: string, opts: { a
     if (inv.type === "BALANCE") {
       if (!inv.quoteId) throw conflict("Facture de solde sans devis.");
       const deps = await tx.invoice.findMany({
-        where: { quoteId: inv.quoteId, type: "DEPOSIT", status: { in: ACTIVE_ISSUED } },
+        where: { quoteId: inv.quoteId, type: "DEPOSIT", status: { in: ACTIVE_ISSUED }, deletedAt: null },
       });
       deductions = deps.map(depositDeduction).filter((d): d is Deduction => d != null);
       netToPay = balanceAmounts(totals, deductions).netToPay;
@@ -417,13 +444,14 @@ export function isOverdue(inv: { status: InvoiceStatus; dueDate: Date | null; ty
 
 async function assertCreditWithinLimit(tx: Tx, invoiceId: string, amount: number, excludeId?: string) {
   const orig = await tx.invoice.findUnique({ where: { id: invoiceId } });
-  if (!orig || orig.number == null) throw conflict("Un avoir ne peut viser qu'une facture émise.");
+  if (!orig || orig.number == null || orig.deletedAt) throw conflict("Un avoir ne peut viser qu'une facture émise.");
   if (orig.type === "CREDIT_NOTE") throw conflict("Impossible d'émettre un avoir sur un avoir.");
   const pending = await tx.invoice.findMany({
     where: {
       relatedInvoiceId: invoiceId,
       type: "CREDIT_NOTE",
       status: { in: ["DRAFT", "PENDING_APPROVAL"] },
+      deletedAt: null,
       id: excludeId ? { not: excludeId } : undefined,
     },
   });

@@ -106,10 +106,10 @@ export async function quoteOpAction(id: string, op: string, extra: { comment?: s
       case "revise": return (await quotes.reviseQuote(u, id)).id;
       case "duplicate": return (await quotes.duplicateQuote(u, id)).id;
       case "cancel": return (await quotes.cancelQuote(u, id, extra.comment ?? "Annulé")).id;
-      case "delete": await quotes.deleteDraftQuote(u, id); return null;
+      case "delete": await quotes.deleteQuote(u, id, extra.comment ?? ""); return null;
       default: throw new AppError("Opération inconnue");
     }
-  });
+  }, op === "delete" ? "Devis supprimé" : undefined);
 }
 
 // ---------------------------------------------------------------- factures
@@ -150,13 +150,13 @@ export async function invoiceOpAction(id: string, op: string, extra: { comment?:
         after(() => notify.notifyDecision("INVOICE", id, u, "rejected", extra.comment));
         return inv.id;
       }
-      case "delete": await invoices.deleteDraftInvoice(u, id); return null;
+      case "delete": await invoices.deleteInvoice(u, id, extra.comment ?? ""); return null;
       case "creditFull": return (await invoices.createCreditNote(u, id, { reason: extra.comment ?? "", full: true })).id;
       case "rectify": return (await invoices.rectifyInvoice(u, id, extra.comment ?? "")).rectification.id;
       case "hubspot": return hubspot.syncDocumentToHubspot("INVOICE", id, u);
       default: throw new AppError("Opération inconnue");
     }
-  });
+  }, op === "delete" ? "Facture supprimée" : undefined);
 }
 
 export async function partialCreditAction(invoiceId: string, reason: string, lines: unknown[]) {
@@ -233,6 +233,27 @@ export async function saveCatalogItemAction(id: string | null, data: unknown) {
 
 export async function toggleCatalogItemAction(id: string) {
   return run((u) => admin.toggleCatalogItem(u, id));
+}
+
+/** Résumé lisible d'un ajout au catalogue : ajoutées / déjà présentes. */
+function catalogSummary(r: admin.CatalogAddResult): string {
+  const parts: string[] = [];
+  if (r.added.length) parts.push(r.added.length === 1 ? `« ${r.added[0]} » ajoutée au catalogue` : `${r.added.length} prestations ajoutées au catalogue`);
+  if (r.existing.length) {
+    const inactive = !r.existing.some((e) => !e.active) ? "" : r.existing.length === 1 ? " (désactivée : réactivez-la dans le Catalogue)" : " (certaines désactivées dans le Catalogue)";
+    parts.push(r.existing.length === 1 ? `« ${r.existing[0].designation} » déjà présente${inactive}` : `${r.existing.length} déjà présentes${inactive}`);
+  }
+  return parts.join(" · ");
+}
+
+export async function addLinesToCatalogAction(lines: unknown[]) {
+  const r = await run((u) => admin.addLinesToCatalog(u, lines));
+  return r.ok ? { ...r, message: catalogSummary(r.data!) } : r;
+}
+
+export async function addQuoteLinesToCatalogAction(quoteId: string) {
+  const r = await run((u) => admin.addQuoteLinesToCatalog(u, quoteId));
+  return r.ok ? { ...r, message: catalogSummary(r.data!) } : r;
 }
 
 // ---------------------------------------------------------------- e-mail

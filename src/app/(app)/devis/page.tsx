@@ -22,6 +22,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   const board = vue === "pipeline";
   const quotes = await db.quote.findMany({
     where: {
+      deletedAt: null,
       ...(statut && statut !== "EXPIRED" && !board ? { status: statut as never } : { status: { notIn: ["SUPERSEDED", ...(board ? (["CANCELLED", "REFUSED"] as const) : [])] } }),
       ...(q ? { OR: [{ title: { contains: q, mode: "insensitive" } }, { reference: { contains: q } }, { client: { name: { contains: q, mode: "insensitive" } } }] } : {}),
     },

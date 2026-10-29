@@ -56,7 +56,7 @@ export async function draftDocumentEmail(entityType: "QUOTE" | "INVOICE", id: st
   const s = await getSettings();
   if (entityType === "QUOTE") {
     const q = await db.quote.findUnique({ where: { id }, include: { client: true } });
-    if (!q) throw notFound();
+    if (!q || q.deletedAt) throw notFound();
     const ref = quoteReference(q.reference, q.version);
     return {
       to: q.client.email ?? "",
@@ -79,7 +79,7 @@ ${s.phone} · ${s.website}`,
     };
   }
   const inv = await db.invoice.findUnique({ where: { id }, include: { client: true } });
-  if (!inv) throw notFound();
+  if (!inv || inv.deletedAt) throw notFound();
   const label = inv.type === "CREDIT_NOTE" ? "Avoir" : inv.type === "DEPOSIT" ? "Facture d'acompte" : inv.type === "BALANCE" ? "Facture de solde" : "Facture";
   return {
     to: inv.client.email ?? "",
@@ -115,11 +115,11 @@ export async function sendDocumentEmail(actor: Actor, entityType: "QUOTE" | "INV
   // Seuls les documents officiels (approuvés / émis) peuvent être envoyés.
   if (entityType === "QUOTE") {
     const q = await db.quote.findUnique({ where: { id } });
-    if (!q) throw notFound();
+    if (!q || q.deletedAt) throw notFound();
     if (!["APPROVED", "SENT", "ACCEPTED"].includes(q.status)) throw conflict("Seul un devis approuvé par le CEO peut être envoyé.");
   } else {
     const inv = await db.invoice.findUnique({ where: { id } });
-    if (!inv) throw notFound();
+    if (!inv || inv.deletedAt) throw notFound();
     if (inv.number == null) throw conflict("Seule une facture émise peut être envoyée.");
   }
   const file = await archiveOfficialPdf(entityType, id, actor.id);

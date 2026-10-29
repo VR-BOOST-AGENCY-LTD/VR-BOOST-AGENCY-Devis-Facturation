@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const pending = can(user, "quote.approve")
-    ? (await db.quote.count({ where: { status: "PENDING_APPROVAL" } })) +
-      (await db.invoice.count({ where: { status: "PENDING_APPROVAL" } }))
+    ? (await db.quote.count({ where: { status: "PENDING_APPROVAL", deletedAt: null } })) +
+      (await db.invoice.count({ where: { status: "PENDING_APPROVAL", deletedAt: null } }))
     : 0;
   const items = [
     { href: "/", label: "Tableau de bord", icon: "grid", section: "Pilotage" },

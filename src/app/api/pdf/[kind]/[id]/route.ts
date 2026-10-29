@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
+import { can } from "@/lib/permissions";
 import { archiveOfficialPdf, invoicePdfDoc, pdfFilename, quotePdfDoc, renderDoc } from "@/pdf/render";
 
 export const runtime = "nodejs";
@@ -20,6 +21,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
   const entityType = kind === "quote" ? "QUOTE" : "INVOICE";
   try {
     const { doc, row } = kind === "quote" ? await quotePdfDoc(id) : await invoicePdfDoc(id);
+    // Document supprimé : archive consultable uniquement par le CEO (traçabilité)
+    if (row.deletedAt && !can(user, kind === "quote" ? "quote.delete" : "invoice.delete")) {
+      return NextResponse.json({ error: "Document introuvable" }, { status: 404 });
+    }
     let bytes: Uint8Array;
     let filename = pdfFilename(doc, row.client.name);
     let sha: string | null = null;

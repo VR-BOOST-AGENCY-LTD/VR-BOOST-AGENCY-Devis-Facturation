@@ -25,6 +25,7 @@ export async function dueForReminder(today = todayUtc()) {
     where: {
       type: { not: "CREDIT_NOTE" },
       status: { in: ["ISSUED", "PARTIALLY_PAID"] },
+      deletedAt: null,
       dueDate: { lt: today },
       reminderCount: { lt: s.reminderMaxCount },
       OR: [{ lastReminderAt: null }, { lastReminderAt: { lte: addDays(today, -s.reminderIntervalDays) } }],
@@ -39,7 +40,7 @@ export async function sendReminder(actor: Actor | null, invoiceId: string) {
   if (actor) assertCan(actor, "document.send");
   if (!mailEnabled()) throw new AppError("Envoi d'e-mails non configuré (SMTP).", "CONFLICT");
   const inv = await db.invoice.findUnique({ where: { id: invoiceId }, include: { client: true } });
-  if (!inv) throw notFound();
+  if (!inv || inv.deletedAt) throw notFound();
   if (inv.type === "CREDIT_NOTE" || !["ISSUED", "PARTIALLY_PAID"].includes(inv.status)) {
     throw conflict("Relance possible uniquement sur une facture émise non soldée.");
   }

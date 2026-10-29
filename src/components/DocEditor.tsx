@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import type { ActionResult } from "@/app/actions";
 import { toast } from "./Toaster";
 import { computeTotals, lineTotalCents } from "@/lib/calc";
+import { catalogKey } from "@/lib/catalog";
 import { formatCents, formatPercent } from "@/lib/format";
 
 export type EditorLine = {
@@ -41,6 +42,7 @@ export type EditorData = {
 type ClientOpt = { id: string; name: string; ice: string | null; city: string | null; hubspotCompanyId: string | null };
 type CatalogOpt = { id: string; designation: string; description: string | null; unit: string; unitPrice: number | null; vatRate: number };
 
+const NO_KEYS: string[] = [];
 const UNITS = ["forfait", "jour", "heure", "unité", "vidéo", "photo", "m²", "mois"];
 const VAT_RATES = ["20", "14", "10", "7", "0"];
 
@@ -59,6 +61,8 @@ export function DocEditor({
   initial,
   clients,
   catalog,
+  catalogKeys = NO_KEYS,
+  addToCatalog,
   canEditTerms,
   linesLocked = false,
   isCreditNote = false,
@@ -70,6 +74,10 @@ export function DocEditor({
   initial: EditorData;
   clients: ClientOpt[];
   catalog: CatalogOpt[];
+  /** Clés (catalogKey) de toutes les prestations du catalogue, désactivées comprises */
+  catalogKeys?: string[];
+  /** Devis : enregistrer des lignes au catalogue (absent si l'utilisateur n'en a pas le droit) */
+  addToCatalog?: (lines: unknown[]) => Promise<ActionResult<unknown>>;
   canEditTerms: boolean;
   linesLocked?: boolean;
   isCreditNote?: boolean;
@@ -82,6 +90,26 @@ export function DocEditor({
   const [pending, start] = useTransition();
   const [deals, setDeals] = useState<{ id: string; name: string }[]>([]);
   const client = clients.find((c) => c.id === d.clientId);
+  const [known, setKnown] = useState(() => new Set(catalogKeys));
+  const [catalogPending, startCatalog] = useTransition();
+  useEffect(() => setKnown(new Set(catalogKeys)), [catalogKeys]);
+  const catalogEnabled = kind === "quote" && !linesLocked && Boolean(addToCatalog);
+  const missing = d.lines.map((l, i) => ({ l, i })).filter(({ l }) => l.designation.trim() && !known.has(catalogKey(l.designation)));
+
+  /** Enregistre des lignes au catalogue (le devis lui-même n'est pas modifié). */
+  const saveToCatalog = (idx: number[]) =>
+    startCatalog(async () => {
+      const lines = idx.map((i) => d.lines[i]).map((l) => ({
+        designation: l.designation, description: l.description || null, unit: l.unit,
+        unitPrice: l.unitPrice.trim() === "" ? null : n(l.unitPrice), vatRate: n(l.vatRate),
+      }));
+      const r = await addToCatalog!(lines);
+      if (!r.ok) return toast(r.error, "error");
+      setKnown((p) => new Set([...p, ...lines.map((l) => catalogKey(l.designation))]));
+      const res = r.data as { added: string[] };
+      toast(r.message ?? "Catalogue mis à jour", res.added.length ? "success" : "info");
+      router.refresh();
+    });
 
   useEffect(() => {
     if (!client?.hubspotCompanyId) return setDeals([]);
@@ -231,6 +259,12 @@ export function DocEditor({
                     {catalog.map((c) => <option key={c.id} value={c.id}>{c.designation}</option>)}
                   </select>
                 ) : null}
+                {catalogEnabled && missing.length > 1 ? (
+                  <button type="button" className="btn-ghost" disabled={catalogPending} onClick={() => saveToCatalog(missing.map((m) => m.i))}
+                    title="Enregistre au catalogue les prestations de ce devis qui n'y figurent pas encore">
+                    {catalogPending ? "Ajout…" : `Ajouter au catalogue (${missing.length})`}
+                  </button>
+                ) : null}
                 <button type="button" className="btn-primary" onClick={() => set("lines", [...d.lines, emptyLine()])}>+ Ligne libre</button>
               </div>
             ) : (
@@ -250,6 +284,14 @@ export function DocEditor({
                         onChange={(e) => setLine(i, { designation: e.target.value })} />
                       <textarea className="input min-h-14 text-xs" placeholder="Description détaillée" value={l.description} disabled={linesLocked}
                         onChange={(e) => setLine(i, { description: e.target.value })} />
+                      {catalogEnabled && l.designation.trim() ? (
+                        known.has(catalogKey(l.designation)) ? (
+                          <p className="text-xs text-muted">✓ Dans le catalogue</p>
+                        ) : (
+                          <button type="button" className="text-xs font-medium text-brand hover:underline disabled:opacity-50" disabled={catalogPending}
+                            onClick={() => saveToCatalog([i])}>+ Ajouter au catalogue</button>
+                        )
+                      ) : null}
                     </div>
                     {!linesLocked ? (
                       <div className="flex flex-col gap-1">

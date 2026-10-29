@@ -18,8 +18,8 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
   const c = await db.client.findUnique({
     where: { id },
     include: {
-      quotes: { where: { status: { not: "SUPERSEDED" } }, orderBy: { createdAt: "desc" } },
-      invoices: { orderBy: { createdAt: "desc" } },
+      quotes: { where: { status: { not: "SUPERSEDED" }, deletedAt: null }, orderBy: { createdAt: "desc" } },
+      invoices: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
     },
   });
   if (!c) notFound();

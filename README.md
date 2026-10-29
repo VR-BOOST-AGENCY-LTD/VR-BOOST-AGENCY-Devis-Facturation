@@ -73,6 +73,21 @@ total en brouillon (réduire ses lignes pour un avoir partiel), plafonné au mon
 rectificative » crée l'avoir total + une copie corrigeable, qui ne peut être émise qu'après l'avoir. Un avoir total
 passe la facture d'origine à « Annulée (avoir) ». Les avoirs utilisent la série FACTURES.
 
+**Suppression (CEO uniquement)** : « Supprimer » est une *suppression logique*. Le devis ou la facture reste en base
+(numéro consommé, lignes, PDF archivé, journal), mais disparaît des listes, du tableau de bord, de la validation et des
+relances, et ne peut plus être modifié (trigger). Un motif est obligatoire et tracé dans le journal ; le PDF archivé
+reste consultable par le CEO. Refus tant que des documents en dépendent : factures rattachées à un devis, version plus
+récente d'un devis, paiements actifs, avoirs/rectificatives, solde tenant compte d'un acompte, avoir déjà émis.
+Supprimer la version la plus récente d'un devis rend à la précédente son statut (approuvé, envoyé, accepté ou refusé).
+Pour annuler comptablement une facture émise, l'avoir reste la voie normale.
+
+**Catalogue depuis les devis** : dans l'éditeur de devis, « + Ajouter au catalogue » (par ligne) ou « Ajouter au
+catalogue (N) » enregistre les prestations absentes (désignation, description, unité, prix unitaire HT, TVA ; la
+quantité et la remise restent propres au devis). Sur la fiche d'un devis existant, la carte « Catalogue » fait de même
+pour ses lignes. Doublon = même désignation, sans tenir compte de la casse, des accents ni des espaces (désactivées
+comprises) : rien n'est dupliqué ni modifié. Le devis n'est jamais touché, et modifier ensuite le catalogue ne change
+aucun devis existant (les lignes sont copiées).
+
 ## Numérotation
 
 - Deux séries indépendantes et annuelles : **DEVIS** et **FACTURES** (avoirs inclus).
@@ -93,7 +108,7 @@ passe la facture d'origine à « Annulée (avoir) ». Les avoirs utilisent la s�
   (`assertCan`) : l'interface n'est jamais la seule barrière. Protection CSRF native des Server Actions.
 - **Garde-fous en base (triggers)** : journal d'audit et archives PDF en ajout seul ; factures émises non
   modifiables/non supprimables ; lignes figées ; paiements non supprimables (annulation tracée) ; devis approuvés
-  figés ; séquences jamais décrémentées.
+  figés ; séquences jamais décrémentées ; documents supprimés (logiquement) figés et non restaurables.
 - Cachet et signature : stockés hors du dossier public, lus uniquement côté serveur, incorporés **seulement** au PDF
   officiel d'un document approuvé par le CEO avec l'option cochée. Brouillons : filigrane « BROUILLON — NON VALABLE ».
 - PDF officiel archivé une seule fois (empreinte SHA-256, en-tête `X-Document-SHA256`) et resservi à l'identique.

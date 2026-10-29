@@ -11,7 +11,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   await requirePermission("invoice.editDraft");
   const { id } = await params;
   const inv = await db.invoice.findUnique({ where: { id }, include: { lines: true } });
-  if (!inv) notFound();
+  if (!inv || inv.deletedAt) notFound();
   if (!["DRAFT", "PENDING_APPROVAL"].includes(inv.status)) redirect(`/factures/${id}`);
   const opts = await editorOptions();
   return (
