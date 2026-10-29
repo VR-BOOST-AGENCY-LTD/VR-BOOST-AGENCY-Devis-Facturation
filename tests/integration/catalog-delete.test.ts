@@ -16,7 +16,7 @@ const year = new Date().getFullYear();
 const date = new Date().toISOString().slice(0, 10);
 
 beforeEach(async () => {
-  const tables = ["AuditLog", "DocumentFile", "Payment", "InvoiceLine", "Invoice", "QuoteLine", "Quote", "Client", "CatalogItem", "Sequence", "Session", "User", "CompanySettings"];
+  const tables = ["AuditLog", "DocumentFile", "Payment", "InvoiceLine", "Invoice", "QuoteLine", "Quote", "Client", "CatalogItem", "Sequence", "Session", "UserAvatar", "User", "CompanySettings"];
   await db.$executeRawUnsafe(`TRUNCATE ${tables.map((t) => `"${t}"`).join(", ")} RESTART IDENTITY CASCADE`);
   await db.companySettings.create({ data: { id: 1 } });
   const hash = await bcrypt.hash("MotDePasse-2026", 4);
@@ -191,5 +191,34 @@ describe("Suppression réservée au CEO", () => {
     await invoices.deleteInvoice(ceo, inv.id, "test");
     await expect(db.invoice.update({ where: { id: inv.id }, data: { deletedAt: null } })).rejects.toThrow(/supprimé/);
     await expect(db.invoice.delete({ where: { id: inv.id } })).rejects.toThrow(/supprimé/);
+  });
+});
+
+describe("Logo du compte", () => {
+  const png = (w: number, h: number) => {
+    const b = new Uint8Array(64);
+    b.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]);
+    new DataView(b.buffer).setUint32(16, w);
+    new DataView(b.buffer).setUint32(20, h);
+    return b;
+  };
+
+  it("chaque compte enregistre et retire son propre logo, avec les contrôles de format", async () => {
+    const { setOwnAvatar, removeOwnAvatar } = await import("@/server/users");
+    await expect(setOwnAvatar(meryem, png(512, 300))).rejects.toThrow(/carrée/);
+    await expect(setOwnAvatar(meryem, png(64, 64))).rejects.toThrow(/trop petite/);
+    await expect(setOwnAvatar(meryem, png(4096, 4096))).rejects.toThrow(/trop grande/);
+    await expect(setOwnAvatar(meryem, new TextEncoder().encode("<svg/>"))).rejects.toThrow(/Format/);
+    await expect(setOwnAvatar(meryem, new Uint8Array(1024 * 1024 + 1))).rejects.toThrow(/1 Mo/);
+
+    await setOwnAvatar(meryem, png(512, 512));
+    const u = await db.user.findUniqueOrThrow({ where: { id: meryem.id }, include: { avatar: true } });
+    expect(u.avatarUpdatedAt).not.toBeNull();
+    expect(u.avatar).toMatchObject({ mime: "image/png", width: 512, height: 512 });
+    expect(await db.userAvatar.count({ where: { userId: ceo.id } })).toBe(0); // n'affecte que son compte
+
+    await removeOwnAvatar(meryem);
+    expect((await db.user.findUniqueOrThrow({ where: { id: meryem.id } })).avatarUpdatedAt).toBeNull();
+    expect(await db.userAvatar.count()).toBe(0);
   });
 });

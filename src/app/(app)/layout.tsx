@@ -27,7 +27,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ];
   return (
     <div className="min-h-screen lg:flex lg:gap-3 lg:p-3">
-      <Nav items={items} user={{ name: user.name, role: user.role === "CEO" ? "CEO — Administrateur" : "Commerciale" }} logout={logoutAction} />
+      <Nav items={items} user={{
+        name: user.name,
+        role: user.role === "CEO" ? "CEO — Administrateur" : "Commerciale",
+        avatar: user.avatarUpdatedAt ? `/api/avatar/${user.id}?v=${user.avatarUpdatedAt.getTime()}` : null,
+      }} logout={logoutAction} />
       <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-5 lg:py-5">{children}</main>
       <Toaster />
     </div>

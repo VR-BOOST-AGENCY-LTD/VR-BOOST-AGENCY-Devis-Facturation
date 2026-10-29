@@ -30,7 +30,7 @@ export function Icon({ name, className = "h-4 w-4" }: { name: string; className?
 
 type Item = { href: string; label: string; icon: string; badge?: number; section?: string };
 
-export function Nav({ items, user, logout }: { items: Item[]; user: { name: string; role: string }; logout: () => Promise<void> }) {
+export function Nav({ items, user, logout }: { items: Item[]; user: { name: string; role: string; avatar?: string | null }; logout: () => Promise<void> }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
@@ -82,7 +82,12 @@ export function Nav({ items, user, logout }: { items: Item[]; user: { name: stri
         </nav>
         <div className="m-3 rounded-2xl bg-mist/80 p-3">
           <div className="flex items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink text-xs font-bold text-white">{initials}</span>
+            {user.avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.avatar} alt="" className="h-9 w-9 shrink-0 rounded-full bg-white object-cover ring-1 ring-line" />
+            ) : (
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink text-xs font-bold text-white">{initials}</span>
+            )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{user.name}</p>
               <p className="truncate text-[11px] text-muted">{user.role}</p>

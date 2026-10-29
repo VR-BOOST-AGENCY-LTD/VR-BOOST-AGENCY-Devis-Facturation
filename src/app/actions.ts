@@ -292,6 +292,19 @@ export async function resetUserPasswordAction(id: string, input: { password: str
   return run((u) => users.resetUserPassword(u, id, input), "Mot de passe réinitialisé");
 }
 
+export async function uploadAvatarAction(form: FormData) {
+  return run(async (u) => {
+    const file = form.get("file");
+    if (!(file instanceof File)) throw new AppError("Aucun fichier sélectionné.");
+    await users.setOwnAvatar(u, new Uint8Array(await file.arrayBuffer()));
+    return null;
+  }, "Logo du compte enregistré");
+}
+
+export async function removeAvatarAction() {
+  return run((u) => users.removeOwnAvatar(u).then(() => null), "Logo du compte retiré");
+}
+
 export async function uploadSignedQuoteAction(quoteId: string, form: FormData) {
   return run(async (u) => {
     const file = form.get("file");

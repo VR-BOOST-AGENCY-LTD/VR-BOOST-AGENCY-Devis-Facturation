@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { conflict, forbidden, invalid, notFound } from "@/lib/errors";
+import { imageInfo } from "@/lib/image";
 import { assertCan, type Actor } from "@/lib/permissions";
 
 const MIN = 12;
@@ -92,4 +93,41 @@ export async function resetUserPassword(actor: Actor, id: string, input: { passw
     db.session.deleteMany({ where: { userId: id } }),
   ]);
   await audit(db, actor, "user.passwordReset", "USER", id, `Mot de passe de ${u.email} réinitialisé par le CEO (sessions révoquées)`);
+}
+
+// ---------------------------------------------------------------- logo / photo du compte
+
+/** Format attendu, affiché tel quel dans « Mon compte ». Rendu à 36 px dans la barre latérale (72 px sur écran Retina). */
+export const AVATAR_RULES = { recommended: 512, min: 128, max: 2048, maxBytes: 1024 * 1024 } as const;
+
+/** Chaque utilisateur gère l'image de son propre compte : PNG, JPG ou WebP, carré, 128 à 2048 px, 1 Mo maximum. */
+export async function setOwnAvatar(actor: Actor, bytes: Uint8Array) {
+  if (bytes.length === 0) throw invalid("Fichier vide.");
+  if (bytes.length > AVATAR_RULES.maxBytes) throw invalid("Image trop lourde : 1 Mo maximum.");
+  const info = imageInfo(bytes);
+  if (!info) throw invalid("Format accepté : PNG, JPG ou WebP.");
+  const { width, height } = info;
+  if (Math.abs(width - height) > Math.max(width, height) * 0.02) {
+    throw invalid(`L'image doit être carrée (reçue : ${width} × ${height} px). Format conseillé : ${AVATAR_RULES.recommended} × ${AVATAR_RULES.recommended} px.`);
+  }
+  if (width < AVATAR_RULES.min) throw invalid(`Image trop petite (${width} × ${height} px) : ${AVATAR_RULES.min} × ${AVATAR_RULES.min} px minimum.`);
+  if (width > AVATAR_RULES.max) throw invalid(`Image trop grande (${width} × ${height} px) : ${AVATAR_RULES.max} × ${AVATAR_RULES.max} px maximum.`);
+  const now = new Date();
+  await db.$transaction([
+    db.userAvatar.upsert({
+      where: { userId: actor.id },
+      create: { userId: actor.id, mime: info.mime, data: new Uint8Array(bytes), width, height },
+      update: { mime: info.mime, data: new Uint8Array(bytes), width, height },
+    }),
+    db.user.update({ where: { id: actor.id }, data: { avatarUpdatedAt: now } }),
+  ]);
+  await audit(db, actor, "user.avatar", "USER", actor.id, `Logo du compte mis à jour (${width} × ${height} px, ${Math.round(bytes.length / 1024)} Ko)`);
+}
+
+export async function removeOwnAvatar(actor: Actor) {
+  await db.$transaction([
+    db.userAvatar.deleteMany({ where: { userId: actor.id } }),
+    db.user.update({ where: { id: actor.id }, data: { avatarUpdatedAt: null } }),
+  ]);
+  await audit(db, actor, "user.avatar", "USER", actor.id, "Logo du compte retiré");
 }

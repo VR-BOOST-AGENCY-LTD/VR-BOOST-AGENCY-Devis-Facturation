@@ -117,3 +117,56 @@ export function UserRowActions({ u, update, reset }: {
     </div>
   );
 }
+
+/** Logo / photo du compte : aperçu à la taille réelle de la barre latérale, envoi et retrait. */
+export function AvatarForm({ current, initials, upload, remove }: {
+  current: string | null;
+  initials: string;
+  upload: (form: FormData) => Promise<ActionResult<unknown>>;
+  remove: () => Promise<ActionResult<unknown>>;
+}) {
+  const { pending, exec, Msg } = useAction();
+  const [preview, setPreview] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const shown = preview ?? current;
+  return (
+    <form
+      className="card max-w-xl space-y-4 p-5"
+      action={(fd) => {
+        const f = fd.get("file");
+        if (!(f instanceof File) || f.size === 0) return setError("Choisissez une image.");
+        if (f.size > 1024 * 1024) return setError("Image trop lourde : 1 Mo maximum.");
+        setError(null);
+        exec(() => upload(fd), () => setPreview(null));
+      }}
+    >
+      <div>
+        <h2 className="text-sm font-semibold">Logo du compte</h2>
+        <p className="mt-1 text-xs text-muted">Affiché en rond dans la barre latérale, à la place de vos initiales.</p>
+      </div>
+      <div className="flex items-center gap-4">
+        {shown ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={shown} alt="Aperçu du logo" className="h-16 w-16 rounded-full bg-white object-cover ring-1 ring-line" />
+        ) : (
+          <span className="grid h-16 w-16 place-items-center rounded-full bg-ink text-base font-bold text-white">{initials}</span>
+        )}
+        <ul className="space-y-0.5 text-xs text-muted">
+          <li><b className="text-ink">Format exact conseillé : 512 × 512 px</b> (image carrée)</li>
+          <li>Accepté : carré de 128 × 128 à 2048 × 2048 px</li>
+          <li>PNG (fond transparent ou blanc), JPG ou WebP — 1 Mo maximum</li>
+          <li>Rond : gardez une marge d&apos;environ 10 % autour du logo, les coins sont masqués</li>
+        </ul>
+      </div>
+      <input name="file" type="file" required accept="image/png,image/jpeg,image/webp"
+        onChange={(e) => { const f = e.target.files?.[0]; setPreview(f ? URL.createObjectURL(f) : null); setError(null); }}
+        className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-ink file:px-3 file:py-2 file:text-sm file:font-medium file:text-white" />
+      {error ? <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+      <Msg />
+      <div className="flex flex-wrap gap-2">
+        <button className="btn-primary" disabled={pending}>{pending ? "Envoi…" : "Enregistrer le logo"}</button>
+        {current ? <button type="button" className="btn-ghost" disabled={pending} onClick={() => exec(remove, () => setPreview(null))}>Retirer le logo</button> : null}
+      </div>
+    </form>
+  );
+}

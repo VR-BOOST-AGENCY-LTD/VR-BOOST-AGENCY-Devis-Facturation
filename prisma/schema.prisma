@@ -70,10 +70,13 @@ model User {
   active       Boolean   @default(true)
   failedLogins Int       @default(0)
   lockedUntil  DateTime?
+  // Logo / photo affiché dans la barre latérale (fichier dans UserAvatar ; date = version pour le cache)
+  avatarUpdatedAt DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
   sessions         Session[]
+  avatar           UserAvatar?
   quotesCreated    Quote[]     @relation("QuoteCreatedBy")
   quotesApproved   Quote[]     @relation("QuoteApprovedBy")
   invoicesCreated  Invoice[]   @relation("InvoiceCreatedBy")
@@ -83,6 +86,17 @@ model User {
   payments         Payment[]   @relation("PaymentRecordedBy")
   auditLogs        AuditLog[]
   clients          Client[]
+}
+
+/// Image du compte (séparée de User pour ne pas la charger à chaque requête)
+model UserAvatar {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mime      String
+  data      Bytes
+  width     Int
+  height    Int
+  updatedAt DateTime @updatedAt
 }
 
 model Session {
