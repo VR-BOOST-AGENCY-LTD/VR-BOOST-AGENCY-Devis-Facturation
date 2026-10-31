@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth";
+import { ROLE_LABEL } from "@/lib/permissions";
 import { db } from "@/lib/db";
 import { AvatarForm, ChangePasswordForm } from "@/components/AccountForms";
 import { PageHeader } from "@/components/ui";
@@ -11,11 +12,11 @@ export default async function AccountPage() {
   const sessions = await db.session.count({ where: { userId: user.id, expiresAt: { gt: new Date() } } });
   return (
     <>
-      <PageHeader eyebrow="Compte" title="Mon compte" subtitle={`${user.name} · ${user.email} · ${user.role === "CEO" ? "CEO — Administrateur" : "Commerciale"}`} />
+      <PageHeader eyebrow="Compte" title="Mon compte" subtitle={`${user.name}${user.accountLabel ? ` (${user.accountLabel})` : ""} · ${user.email} · ${ROLE_LABEL[user.role]}`} />
       <div className="space-y-6">
         <AvatarForm
           current={user.avatarUpdatedAt ? `/api/avatar/${user.id}?v=${user.avatarUpdatedAt.getTime()}` : null}
-          initials={user.name.split(/\s+/).filter((w) => /[A-Za-zÀ-ÿ]/.test(w)).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "VR"}
+          initials={(user.accountLabel || user.name).split(/\s+/).filter((w) => /[A-Za-zÀ-ÿ]/.test(w)).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "VR"}
           upload={uploadAvatarAction}
           remove={removeAvatarAction}
         />

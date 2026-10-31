@@ -20,7 +20,7 @@ async function main() {
     if ((await askHidden("Confirmer le mot de passe : ")) !== pw) throw new Error("Les deux saisies ne correspondent pas.");
     const user = await db.user.create({ data: { email, name, role, passwordHash: await bcrypt.hash(pw, 12) } });
     await db.auditLog.create({
-      data: { action: "user.create", entityType: "USER", entityId: user.id, summary: `Compte ${role === "CEO" ? "CEO" : "commerciale"} créé en ligne de commande : ${email}` },
+      data: { action: "user.create", entityType: "USER", entityId: user.id, summary: `Compte ${role === "CEO" ? "CEO" : "Account Manager"} créé en ligne de commande : ${email}` },
     });
     console.log(`Compte créé : ${email} (${role}).`);
   } finally {

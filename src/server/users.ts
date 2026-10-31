@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { conflict, forbidden, invalid, notFound } from "@/lib/errors";
 import { imageInfo } from "@/lib/image";
-import { assertCan, type Actor } from "@/lib/permissions";
+import { assertCan, ROLE_LABEL, type Actor } from "@/lib/permissions";
 
 const MIN = 12;
 
@@ -43,7 +43,7 @@ export async function createUser(actor: Actor, input: unknown) {
   checkPassword(d.password, d.confirm);
   if (await db.user.findUnique({ where: { email: d.email } })) throw conflict("Un compte existe déjà avec cet e-mail.");
   const u = await db.user.create({ data: { email: d.email, name: d.name, role: d.role, passwordHash: await bcrypt.hash(d.password, 12) } });
-  await audit(db, actor, "user.create", "USER", u.id, `Compte créé : ${u.email} (${u.role === "CEO" ? "CEO" : "commerciale"})`);
+  await audit(db, actor, "user.create", "USER", u.id, `Compte créé : ${u.email} (${ROLE_LABEL[u.role]})`);
   return u;
 }
 
@@ -52,7 +52,7 @@ async function assertAnotherActiveCeo(excludeId: string) {
   if (n === 0) throw conflict("Il doit rester au moins un compte CEO actif.");
 }
 
-export async function updateUser(actor: Actor, id: string, input: { name?: string; role?: "CEO" | "SALES"; active?: boolean }) {
+export async function updateUser(actor: Actor, id: string, input: { name?: string; accountLabel?: string | null; role?: "CEO" | "SALES"; active?: boolean }) {
   assertCan(actor, "users.manage");
   const u = await db.user.findUnique({ where: { id } });
   if (!u) throw notFound("Compte introuvable");
@@ -62,10 +62,14 @@ export async function updateUser(actor: Actor, id: string, input: { name?: strin
   if (u.role === "CEO" && (input.active === false || input.role === "SALES")) await assertAnotherActiveCeo(id);
   const name = input.name?.trim();
   if (input.name !== undefined && !name) throw invalid("Nom obligatoire.");
+  if (name && name.length > 100) throw invalid("Nom trop long (100 caractères maximum).");
+  const label = input.accountLabel === undefined ? undefined : input.accountLabel?.trim() || null;
+  if (label && label.length > 60) throw invalid("Libellé du compte trop long (60 caractères maximum).");
   const updated = await db.user.update({
     where: { id },
     data: {
       ...(name ? { name } : {}),
+      ...(label !== undefined ? { accountLabel: label } : {}),
       ...(input.role ? { role: input.role } : {}),
       ...(input.active !== undefined ? { active: input.active, failedLogins: 0, lockedUntil: null } : {}),
     },
@@ -75,7 +79,8 @@ export async function updateUser(actor: Actor, id: string, input: { name?: strin
   }
   const changes = [
     name && name !== u.name ? `nom « ${name} »` : null,
-    input.role && input.role !== u.role ? `rôle ${input.role === "CEO" ? "CEO" : "commerciale"}` : null,
+    label !== undefined && label !== u.accountLabel ? (label ? `libellé « ${label} »` : "libellé retiré") : null,
+    input.role && input.role !== u.role ? `rôle ${ROLE_LABEL[input.role]}` : null,
     input.active !== undefined && input.active !== u.active ? (input.active ? "réactivé" : "désactivé") : null,
   ].filter(Boolean);
   await audit(db, actor, "user.update", "USER", id, `Compte ${u.email} modifié : ${changes.join(", ") || "aucun changement"}`);

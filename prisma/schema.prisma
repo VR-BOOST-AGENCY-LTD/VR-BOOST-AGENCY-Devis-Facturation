@@ -65,6 +65,8 @@ model User {
   id           String    @id @default(cuid())
   email        String    @unique
   name         String
+  // Libellé affiché dans la barre latérale à la place du nom (ex. « VR BOOST AGENCY ») ; nom utilisé si vide
+  accountLabel String?
   role         Role
   passwordHash String
   active       Boolean   @default(true)

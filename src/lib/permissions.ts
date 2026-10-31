@@ -4,6 +4,9 @@ import { forbidden } from "./errors";
 
 export type Actor = { id: string; role: Role; name?: string };
 
+/** Libellés des rôles affichés dans l'interface. */
+export const ROLE_LABEL: Record<Role, string> = { CEO: "CEO — Administrateur", SALES: "Account Manager" };
+
 export type Permission =
   | "quote.create"
   | "quote.editDraft"

@@ -61,7 +61,7 @@ export function SettingsForm({ initial, save }: { initial: Settings; save: (d: u
           </div>
           <label className="flex items-center gap-3 text-sm sm:col-span-4">
             <input type="checkbox" checked={Boolean(s.salesCanEditTerms)} onChange={(e) => setS({ ...s, salesCanEditTerms: e.target.checked })} />
-            Autoriser la commerciale à modifier acompte, validité et modalités sur ses devis
+            Autoriser l&apos;Account Manager à modifier acompte, validité et modalités sur ses devis
           </label>
         </div>
       </section>

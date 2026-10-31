@@ -284,7 +284,7 @@ export async function createUserAction(input: unknown) {
   return run((u) => users.createUser(u, input).then((x) => x.id), "Compte créé");
 }
 
-export async function updateUserAction(id: string, input: { name?: string; role?: "CEO" | "SALES"; active?: boolean }) {
+export async function updateUserAction(id: string, input: { name?: string; accountLabel?: string | null; role?: "CEO" | "SALES"; active?: boolean }) {
   return run((u) => users.updateUser(u, id, input).then(() => null), "Compte mis à jour");
 }
 

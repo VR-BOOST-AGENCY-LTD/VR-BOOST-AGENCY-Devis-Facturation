@@ -77,14 +77,14 @@ export async function logout() {
   jar.delete(COOKIE);
 }
 
-export type CurrentUser = Actor & { name: string; email: string; avatarUpdatedAt: Date | null };
+export type CurrentUser = Actor & { name: string; accountLabel: string | null; email: string; avatarUpdatedAt: Date | null };
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   const s = await db.session.findUnique({ where: { tokenHash: sha256(token) }, include: { user: true } });
   if (!s || s.expiresAt < new Date() || !s.user.active) return null;
-  return { id: s.user.id, role: s.user.role, name: s.user.name, email: s.user.email, avatarUpdatedAt: s.user.avatarUpdatedAt };
+  return { id: s.user.id, role: s.user.role, name: s.user.name, accountLabel: s.user.accountLabel, email: s.user.email, avatarUpdatedAt: s.user.avatarUpdatedAt };
 }
 
 export async function requireUser(): Promise<CurrentUser> {

@@ -1,5 +1,6 @@
 import { requirePermission } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { ROLE_LABEL } from "@/lib/permissions";
 import { CreateUserForm, UserRowActions } from "@/components/AccountForms";
 import { PageHeader } from "@/components/ui";
 import { createUserAction, resetUserPasswordAction, updateUserAction } from "@/app/actions";
@@ -20,13 +21,13 @@ export default async function UsersPage() {
           <tbody className="stagger divide-y divide-line/70">
             {users.map((u) => (
               <tr key={u.id} className={u.active ? "" : "opacity-60"}>
-                <td className="td font-medium">{u.name}{u.id === me.id ? <span className="ml-2 text-xs text-muted">(vous)</span> : null}</td>
+                <td className="td font-medium">{u.name}{u.id === me.id ? <span className="ml-2 text-xs text-muted">(vous)</span> : null}{u.accountLabel ? <span className="block text-xs font-normal text-muted">Affiché : {u.accountLabel}</span> : null}</td>
                 <td className="td text-muted">{u.email}</td>
-                <td className="td">{u.role === "CEO" ? "CEO — Administrateur" : "Commerciale"}</td>
+                <td className="td">{ROLE_LABEL[u.role]}</td>
                 <td className="td">{u.active ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800">Actif</span> : <span className="rounded-full bg-mist px-2 py-0.5 text-xs">Désactivé</span>}</td>
                 <td className="td text-muted">{last.get(u.id)?.toLocaleString("fr-MA", { dateStyle: "short", timeStyle: "short", timeZone: "Africa/Casablanca" }) ?? "—"}</td>
                 <td className="td">
-                  <UserRowActions u={{ id: u.id, email: u.email, name: u.name, role: u.role, active: u.active, self: u.id === me.id, lastLogin: null }}
+                  <UserRowActions u={{ id: u.id, email: u.email, name: u.name, accountLabel: u.accountLabel, role: u.role, active: u.active, self: u.id === me.id, lastLogin: null }}
                     update={updateUserAction} reset={resetUserPasswordAction} />
                 </td>
               </tr>

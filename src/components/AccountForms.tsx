@@ -58,11 +58,11 @@ export function CreateUserForm({ create }: { create: (d: unknown) => Promise<Act
     <form className="card grid gap-4 p-5 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); exec(() => create(d), () => { setD(blank); setOpen(false); }); }}>
       <h2 className="text-sm font-semibold sm:col-span-2">Nouveau compte</h2>
       <Field id="u-email" label="E-mail" type="email" value={d.email} onChange={(v) => setD({ ...d, email: v })} />
-      <Field id="u-name" label="Nom affiché" value={d.name} onChange={(v) => setD({ ...d, name: v })} />
+      <Field id="u-name" label="Prénom et nom" value={d.name} onChange={(v) => setD({ ...d, name: v })} />
       <div>
         <label className="label" htmlFor="u-role">Rôle</label>
         <select id="u-role" className="input" value={d.role} onChange={(e) => setD({ ...d, role: e.target.value })}>
-          <option value="SALES">Commerciale</option>
+          <option value="SALES">Account Manager</option>
           <option value="CEO">CEO — Administrateur</option>
         </select>
       </div>
@@ -79,15 +79,16 @@ export function CreateUserForm({ create }: { create: (d: unknown) => Promise<Act
   );
 }
 
-type Row = { id: string; email: string; name: string; role: "CEO" | "SALES"; active: boolean; self: boolean; lastLogin: string | null };
+type Row = { id: string; email: string; name: string; accountLabel: string | null; role: "CEO" | "SALES"; active: boolean; self: boolean; lastLogin: string | null };
 
 export function UserRowActions({ u, update, reset }: {
   u: Row;
-  update: (id: string, d: { name?: string; role?: "CEO" | "SALES"; active?: boolean }) => Promise<ActionResult<unknown>>;
+  update: (id: string, d: { name?: string; accountLabel?: string | null; role?: "CEO" | "SALES"; active?: boolean }) => Promise<ActionResult<unknown>>;
   reset: (id: string, d: { password: string; confirm: string }) => Promise<ActionResult<unknown>>;
 }) {
-  const [mode, setMode] = useState<null | "reset">(null);
+  const [mode, setMode] = useState<null | "reset" | "edit">(null);
   const [pw, setPw] = useState({ password: "", confirm: "" });
+  const [ident, setIdent] = useState({ name: u.name, accountLabel: u.accountLabel ?? "" });
   const { pending, exec, Msg } = useAction();
   return (
     <div className="space-y-2">
@@ -96,7 +97,7 @@ export function UserRowActions({ u, update, reset }: {
           <>
             <button className="btn-ghost px-2.5 py-1 text-xs" disabled={pending}
               onClick={() => exec(() => update(u.id, { role: u.role === "CEO" ? "SALES" : "CEO" }))}>
-              {u.role === "CEO" ? "Passer commerciale" : "Passer CEO"}
+              {u.role === "CEO" ? "Passer Account Manager" : "Passer CEO"}
             </button>
             <button className={`${u.active ? "btn-danger" : "btn-ghost"} px-2.5 py-1 text-xs`} disabled={pending}
               onClick={() => exec(() => update(u.id, { active: !u.active }))}>
@@ -104,8 +105,23 @@ export function UserRowActions({ u, update, reset }: {
             </button>
           </>
         ) : null}
-        <button className="btn-ghost px-2.5 py-1 text-xs" onClick={() => setMode(mode ? null : "reset")}>Réinitialiser le mot de passe</button>
+        <button className="btn-ghost px-2.5 py-1 text-xs" onClick={() => setMode(mode === "edit" ? null : "edit")}>Modifier</button>
+        <button className="btn-ghost px-2.5 py-1 text-xs" onClick={() => setMode(mode === "reset" ? null : "reset")}>Réinitialiser le mot de passe</button>
       </div>
+      {mode === "edit" ? (
+        <form className="flex flex-wrap justify-end gap-2" onSubmit={(e) => { e.preventDefault(); exec(() => update(u.id, ident), () => setMode(null)); }}>
+          <div className="w-48 text-left">
+            <label className="label" htmlFor={`n-${u.id}`}>Prénom et nom</label>
+            <input id={`n-${u.id}`} className="input" value={ident.name} onChange={(e) => setIdent({ ...ident, name: e.target.value })} />
+          </div>
+          <div className="w-52 text-left">
+            <label className="label" htmlFor={`l-${u.id}`}>Libellé du compte (facultatif)</label>
+            <input id={`l-${u.id}`} className="input" placeholder="ex. VR BOOST AGENCY" value={ident.accountLabel} onChange={(e) => setIdent({ ...ident, accountLabel: e.target.value })} />
+          </div>
+          <div className="flex items-end"><button className="btn-primary px-3 py-2 text-xs" disabled={pending}>Enregistrer</button></div>
+          <p className="w-full text-right text-xs text-muted">Le prénom sert à l&apos;accueil (« Bonjour … ») ; le libellé, s&apos;il est rempli, remplace le nom dans la barre latérale.</p>
+        </form>
+      ) : null}
       {mode === "reset" ? (
         <form className="flex flex-wrap justify-end gap-2" onSubmit={(e) => { e.preventDefault(); exec(() => reset(u.id, pw), () => { setPw({ password: "", confirm: "" }); setMode(null); }); }}>
           <input aria-label="Nouveau mot de passe" type="password" autoComplete="new-password" placeholder="Nouveau mot de passe" className="input w-48" value={pw.password} onChange={(e) => setPw({ ...pw, password: e.target.value })} />

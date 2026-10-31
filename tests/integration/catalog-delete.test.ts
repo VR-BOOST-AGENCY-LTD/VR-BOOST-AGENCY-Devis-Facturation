@@ -222,3 +222,16 @@ describe("Logo du compte", () => {
     expect(await db.userAvatar.count()).toBe(0);
   });
 });
+
+describe("Nom et libellé du compte", () => {
+  it("le CEO règle prénom (accueil) et libellé (barre latérale) ; vide = retour au nom", async () => {
+    const { updateUser } = await import("@/server/users");
+    await updateUser(ceo, ceo.id, { name: "Rachid", accountLabel: "  VR BOOST AGENCY " });
+    expect(await db.user.findUniqueOrThrow({ where: { id: ceo.id } })).toMatchObject({ name: "Rachid", accountLabel: "VR BOOST AGENCY" });
+    await updateUser(ceo, ceo.id, { accountLabel: "" });
+    expect((await db.user.findUniqueOrThrow({ where: { id: ceo.id } })).accountLabel).toBeNull();
+    await expect(updateUser(meryem, ceo.id, { accountLabel: "x" })).rejects.toThrow(/non autorisée/);
+    const log = await db.auditLog.findFirstOrThrow({ where: { action: "user.update" }, orderBy: { id: "asc" } });
+    expect(log.summary).toMatch(/nom « Rachid ».*libellé « VR BOOST AGENCY »/);
+  });
+});
